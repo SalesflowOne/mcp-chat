@@ -66,7 +66,6 @@ export async function resolveTenantContext(): Promise<TenantContext | null> {
         .select('id')
         .eq('organization_id', cookieOrgId)
         .eq('user_id', appUser.id)
-        .eq('status', 'active')
         .maybeSingle();
 
       if (membership) {

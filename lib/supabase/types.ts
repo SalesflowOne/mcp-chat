@@ -23,7 +23,9 @@ export type OrganizationRow = {
   clerk_org_id: string | null;
   name: string;
   slug: string;
-  created_by: string | null;
+  owner_id?: string | null;
+  created_by?: string | null;
+  status?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -33,9 +35,11 @@ export type OrganizationMemberRow = {
   organization_id: string;
   user_id: string;
   clerk_user_id: string;
+  clerk_org_id?: string | null;
   role: string;
-  status: string;
+  status?: string;
   created_at: string;
+  updated_at?: string;
 };
 
 export type ChatThreadRow = {
@@ -77,10 +81,12 @@ export type UsageEventRow = {
 export type AuditLogRow = {
   id: string;
   organization_id: string | null;
-  user_id: string | null;
+  actor_id?: string | null;
+  user_id?: string | null;
   action: string;
-  target_type: string | null;
-  target_id: string | null;
+  details?: string | null;
+  target_type?: string | null;
+  target_id?: string | null;
   metadata: Json;
   created_at: string;
 };

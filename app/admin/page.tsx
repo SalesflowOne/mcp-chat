@@ -65,7 +65,7 @@ async function AdminDashboard() {
       .limit(10),
     supabase
       .from('audit_logs')
-      .select('action, target_type, created_at')
+      .select('action, details, created_at')
       .order('created_at', { ascending: false })
       .limit(10),
   ]);
@@ -118,10 +118,10 @@ async function AdminDashboard() {
       <section>
         <h2 className="text-lg font-medium mb-3">Recent audit logs</h2>
         <DataTable
-          headers={['Action', 'Target', 'When']}
+          headers={['Action', 'Details', 'When']}
           rows={(recentAudit.data ?? []).map((a) => [
             a.action,
-            a.target_type ?? '—',
+            a.details ?? '—',
             new Date(a.created_at).toLocaleString(),
           ])}
         />

@@ -21,10 +21,13 @@ const KEYS_TO_COPY = [
 
 const KEY_ALIASES = {
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'VITE_CLERK_PUBLISHABLE_KEY',
+  NEXT_PUBLIC_SUPABASE_URL: 'SUPABASE_URL',
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: 'SUPABASE_PUBLISHABLE_KEY',
 };
 
 const KEYS_TO_SET = {
   DISABLE_AUTH: 'false',
+  DISABLE_PERSISTENCE: 'false',
   NEXT_PUBLIC_CLERK_SIGN_IN_URL: '/sign-in',
   NEXT_PUBLIC_CLERK_SIGN_UP_URL: '/sign-up',
   NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: '/',
@@ -99,6 +102,12 @@ for (const key of KEYS_TO_COPY) {
   let value = sourceByKey[key];
   if (!value && KEY_ALIASES[key]) {
     value = sourceByKey[KEY_ALIASES[key]];
+  }
+  if (!value && key === 'NEXT_PUBLIC_SUPABASE_ANON_KEY') {
+    value = sourceByKey.VITE_SUPABASE_PUBLISHABLE_KEY;
+  }
+  if (!value && key === 'NEXT_PUBLIC_SUPABASE_URL') {
+    value = sourceByKey.VITE_SUPABASE_URL;
   }
   if (!value) {
     console.warn(`Skip ${key}: not found on source project`);

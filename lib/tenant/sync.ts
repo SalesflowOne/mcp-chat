@@ -96,7 +96,6 @@ export async function ensureDefaultOrganization(
     .from('organization_members')
     .select('organization_id')
     .eq('user_id', appUser.id)
-    .eq('status', 'active')
     .limit(1)
     .maybeSingle();
 
@@ -125,7 +124,8 @@ export async function ensureDefaultOrganization(
     .insert({
       name,
       slug,
-      created_by: appUser.id,
+      owner_id: appUser.id,
+      status: 'active',
     })
     .select('*')
     .single();
@@ -139,7 +139,6 @@ export async function ensureDefaultOrganization(
     user_id: appUser.id,
     clerk_user_id: appUser.clerk_user_id,
     role: 'owner',
-    status: 'active',
   });
 
   if (memberError) {
@@ -148,11 +147,10 @@ export async function ensureDefaultOrganization(
 
   await supabase.from('audit_logs').insert({
     organization_id: org.id,
-    user_id: appUser.id,
+    actor_id: appUser.id,
     action: 'organization.created',
-    target_type: 'organization',
-    target_id: org.id,
-    metadata: { source: 'default_workspace' },
+    details: `organization:${org.id}`,
+    metadata: { source: 'default_workspace', target_type: 'organization' },
   });
 
   return org;
@@ -182,7 +180,8 @@ export async function syncClerkOrganizationMembership(
         clerk_org_id: clerkOrgId,
         name: clerkOrgName,
         slug,
-        created_by: appUser.id,
+        owner_id: appUser.id,
+        status: 'active',
       })
       .select('*')
       .single();
@@ -207,8 +206,8 @@ export async function syncClerkOrganizationMembership(
       organization_id: org.id,
       user_id: appUser.id,
       clerk_user_id: clerkUserId,
+      clerk_org_id: clerkOrgId,
       role: mappedRole,
-      status: 'active',
     },
     { onConflict: 'organization_id,user_id' },
   );

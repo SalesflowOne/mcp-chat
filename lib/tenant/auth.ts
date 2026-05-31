@@ -53,7 +53,6 @@ export async function requireOrgAccess(
       .select('id')
       .eq('organization_id', organizationId)
       .eq('user_id', ctx.appUser.id)
-      .eq('status', 'active')
       .maybeSingle();
 
     if (!membership) {

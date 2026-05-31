@@ -33,11 +33,23 @@
 npx tsx scripts/bootstrap-master-admin.ts
 ```
 
-## Clerk setup
+## Clerk setup (satellite domain)
 
-1. Add your deployment URL to **Clerk → Domains** (e.g. `https://agentops-mcp-chat.vercel.app`).
-2. Enable **Organizations** in Clerk if you use Clerk org switching.
-3. Set `DISABLE_AUTH=false` on Vercel and redeploy.
+`agentops.one` is a **Clerk satellite** (not the primary). Sign-in runs on the primary app.
+
+1. **Satellite (this app — agentops-mcp-chat)** env:
+   - `NEXT_PUBLIC_CLERK_IS_SATELLITE=true`
+   - `NEXT_PUBLIC_CLERK_DOMAIN=agentops.one`
+   - `NEXT_PUBLIC_CLERK_SIGN_IN_URL=https://sso.oneaccess.one/sign-in` (primary)
+   - `NEXT_PUBLIC_CLERK_SIGN_UP_URL=https://sso.oneaccess.one/sign-up` (primary)
+
+2. **Primary app** (e.g. `one-access` / `sso.oneaccess.one`): add `https://agentops.one` to ClerkProvider `allowedRedirectOrigins`.
+
+3. Clerk Dashboard → Satellites → `agentops.one` must show **Verified** (you already have this).
+
+4. Set `DISABLE_AUTH=false` on Vercel and redeploy.
+
+Visiting `https://agentops.one/sign-in` redirects to the primary sign-in URL; you return to agentops after auth.
 
 ## Master admin
 

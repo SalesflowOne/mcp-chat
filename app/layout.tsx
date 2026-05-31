@@ -86,19 +86,19 @@ export default async function RootLayout({
       <body className="antialiased">
         <DatadogInit />
         <Analytics />
-        <Suspense fallback={null}>
-          <AppClerkProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
+        <AppClerkProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <Suspense fallback={null}>
               <Toaster position="top-center" />
               {children}
-            </ThemeProvider>
-          </AppClerkProvider>
-        </Suspense>
+            </Suspense>
+          </ThemeProvider>
+        </AppClerkProvider>
       </body>
     </html>
   )

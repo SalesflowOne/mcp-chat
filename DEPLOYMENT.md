@@ -10,7 +10,7 @@
 2. Client calls `Clerk.buildSignInUrl()` → Account Portal with `redirect_url` including `__clerk_sync=1`.
 3. User signs in on `accounts.oneaccess.one`.
 4. Clerk redirects back to `https://www.agentops.one/?__clerk_sync=1` and the satellite syncs the session.
-5. FAPI traffic uses `https://agentops.one/__clerk` (proxied by Next.js middleware), not `clerk.agentops.one` (can return Cloudflare 403).
+5. FAPI traffic uses `https://www.agentops.one/__clerk` (proxied by Next.js middleware). Use **www** — Vercel redirects apex to www and Clerk rejects a proxy on a different host than the browser.
 
 Do **not** hardcode Account Portal links without `buildSignInUrl()` — session sync will fail.
 
@@ -19,8 +19,8 @@ Do **not** hardcode Account Portal links without `buildSignInUrl()` — session 
 | Variable | Value |
 |----------|--------|
 | `NEXT_PUBLIC_CLERK_IS_SATELLITE` | `true` |
-| `NEXT_PUBLIC_CLERK_DOMAIN` | `agentops.one` |
-| `NEXT_PUBLIC_CLERK_PROXY_URL` | `https://agentops.one/__clerk` |
+| `NEXT_PUBLIC_CLERK_DOMAIN` | `www.agentops.one` |
+| `NEXT_PUBLIC_CLERK_PROXY_URL` | `https://www.agentops.one/__clerk` |
 | `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `https://accounts.oneaccess.one/sign-in` |
 | `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `https://accounts.oneaccess.one/sign-up` |
 | `NEXT_PUBLIC_APP_URL` | `https://www.agentops.one` |
@@ -44,7 +44,7 @@ Run `node scripts/fix-clerk-auth.mjs` (needs `CLERK_SECRET_KEY`) to refresh allo
 
 The Backend API cannot set `home_url` to a satellite domain; this must be done in the dashboard (or add DNS for apex `oneaccess.one`).
 
-**Configure → Domains → agentops.one (satellite)** — proxy URL should be `https://agentops.one/__clerk` (set automatically by `scripts/fix-clerk-auth.mjs`).
+**Configure → Domains → www.agentops.one (satellite)** — proxy URL should be `https://www.agentops.one/__clerk` (set automatically by `scripts/fix-clerk-auth.mjs`).
 
 ### Optional DNS
 

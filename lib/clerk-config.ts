@@ -7,7 +7,8 @@
  * Embedded <SignIn /> is blocked on satellite domains by Clerk.
  */
 
-export const DEFAULT_SATELLITE_DOMAIN = 'agentops.one';
+/** Must match the hostname users browse (Vercel redirects apex → www). */
+export const DEFAULT_SATELLITE_DOMAIN = 'www.agentops.one';
 
 /** Production canonical app origin (Vercel redirects apex → www). */
 export const DEFAULT_APP_ORIGIN = 'https://www.agentops.one';

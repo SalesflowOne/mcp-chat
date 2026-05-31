@@ -1,20 +1,31 @@
 /**
  * Clerk configuration for agentops.one (satellite domain on One OS instance).
  *
- * Clerk Account Portal (primary sign-in):
- *   https://accounts.agentops.one/sign-in
+ * Clerk Account Portal (primary sign-in, until agentops DNS exists):
+ *   https://accounts.oneaccess.one/sign-in
  *
  * Embedded <SignIn /> is blocked on satellite domains by Clerk.
  */
 
 export const DEFAULT_SATELLITE_DOMAIN = 'agentops.one';
 
-/** Clerk Account Portal — from instance display_config */
-export const CLERK_ACCOUNT_PORTAL_SIGN_IN_URL =
+/**
+ * Clerk Account Portal hostnames (same One OS instance).
+ * accounts.agentops.one — preferred branding; requires DNS (CNAME → accounts.clerk.services)
+ * accounts.oneaccess.one — live today; use until agentops Account Portal DNS is added
+ */
+export const CLERK_ACCOUNT_PORTAL_AGENTOPS_SIGN_IN_URL =
   'https://accounts.agentops.one/sign-in';
 
-export const CLERK_ACCOUNT_PORTAL_SIGN_UP_URL =
+export const CLERK_ACCOUNT_PORTAL_AGENTOPS_SIGN_UP_URL =
   'https://accounts.agentops.one/sign-up';
+
+/** Working Account Portal for this Clerk instance (DNS verified) */
+export const CLERK_ACCOUNT_PORTAL_SIGN_IN_URL =
+  'https://accounts.oneaccess.one/sign-in';
+
+export const CLERK_ACCOUNT_PORTAL_SIGN_UP_URL =
+  'https://accounts.oneaccess.one/sign-up';
 
 export function isClerkSatelliteApp(): boolean {
   const flag = process.env.NEXT_PUBLIC_CLERK_IS_SATELLITE?.trim().toLowerCase();

@@ -1,18 +1,20 @@
 ## Clerk setup (agentops.one satellite)
 
-`agentops.one` is a **Clerk satellite** on the One OS Clerk instance (primary domain `oneaccess.one` — DNS not required for app traffic; only Clerk Account Portal / FAPI use it today). Embedded `<SignIn />` on the satellite domain is blocked by Clerk.
-
-**Account Portal (sign-in):** `https://accounts.oneaccess.one/sign-in` (same pattern as other satellites until `accounts.agentops.one` DNS exists).
+`agentops.one` is a **Clerk satellite** on the shared One OS Clerk instance. The app must **not** send users to apex `oneaccess.one` (no DNS). Sign-in uses **`accounts.agentops.one`**, not `accounts.oneaccess.one`.
 
 ### Auth flow
 
-1. User opens `https://agentops.one/sign-in` (www redirects to apex via `vercel.json`).
-2. Client calls `Clerk.buildSignInUrl()` → Account Portal with `redirect_url` including `__clerk_sync=1`.
-3. User signs in on `accounts.oneaccess.one`.
-4. Clerk redirects back to `https://agentops.one/` and the satellite syncs the session.
-5. FAPI uses `https://agentops.one/__clerk` (Next.js middleware proxy).
+1. User opens `https://agentops.one/sign-in`.
+2. App redirects to `https://accounts.agentops.one/sign-in` with `redirect_url` and `sign_in_force_redirect_url` set to `https://agentops.one/`.
+3. After sign-in, Clerk returns to **agentops.one** (not oneaccess.one).
 
-Do **not** hardcode Account Portal URLs without `buildSignInUrl()` — session sync will fail.
+### Required DNS (Cloudflare)
+
+| Host | Type | Value |
+|------|------|--------|
+| `accounts` | CNAME | `accounts.clerk.services` |
+
+Then verify the domain in **Clerk Dashboard → Domains** if prompted.
 
 ### Vercel env
 
@@ -21,38 +23,21 @@ Do **not** hardcode Account Portal URLs without `buildSignInUrl()` — session s
 | `NEXT_PUBLIC_CLERK_IS_SATELLITE` | `true` |
 | `NEXT_PUBLIC_CLERK_DOMAIN` | `agentops.one` |
 | `NEXT_PUBLIC_CLERK_PROXY_URL` | `https://agentops.one/__clerk` |
-| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `https://accounts.oneaccess.one/sign-in` |
-| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `https://accounts.oneaccess.one/sign-up` |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `https://accounts.agentops.one/sign-in` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `https://accounts.agentops.one/sign-up` |
 | `NEXT_PUBLIC_APP_URL` | `https://agentops.one` |
 | `NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL` | `https://agentops.one/` |
 | `NEXT_PUBLIC_CLERK_SIGN_UP_FORCE_REDIRECT_URL` | `https://agentops.one/` |
 
-Run `node scripts/sync-vercel-env.mjs` (needs `VERCEL_TOKEN`) or set in the Vercel dashboard.
-
-Run `node scripts/fix-clerk-auth.mjs` (needs `CLERK_SECRET_KEY`) for allowed redirect origins + satellite proxy URL.
+Run `node scripts/sync-vercel-env.mjs` and `node scripts/fix-clerk-auth.mjs`.
 
 ### Vercel domains
 
-Canonical host is **apex** `agentops.one` (like `clawops.one`). `vercel.json` redirects `www.agentops.one` → `agentops.one`.
+- Apex `agentops.one` serves the app (no redirect to www).
+- `www.agentops.one` → `agentops.one` (308). Run `node scripts/fix-vercel-agentops-domains.mjs` if needed.
 
-In **Vercel → Project → Domains**, apex `agentops.one` must **not** redirect to www (that breaks the Clerk proxy). Run `node scripts/fix-vercel-agentops-domains.mjs` (needs `VERCEL_TOKEN`) to set apex as primary and `www` → apex (308).
+### Clerk Dashboard (stop oneaccess.one fallbacks)
 
-### Clerk Dashboard (recommended)
+**Configure → Paths** — set Home, After sign-in, After sign-up, and Logo link to **`https://agentops.one`**.
 
-**Configure → Paths** — instance defaults may still point at `https://oneaccess.one` (no DNS). Set:
-
-| Setting | Value |
-|---------|--------|
-| Home URL | `https://agentops.one` |
-| After sign-in URL | `https://agentops.one` |
-| After sign-up URL | `https://agentops.one` |
-| Logo link URL | `https://agentops.one` |
-
-**Configure → Domains → agentops.one (satellite)** — proxy URL: `https://agentops.one/__clerk`.
-
-### Optional DNS
-
-| Host | Type | Value |
-|------|------|--------|
-| `accounts.agentops.one` | CNAME | `accounts.clerk.services` |
-| `clerk.agentops.one` | CNAME | `frontend-api.clerk.services` (optional if using `__clerk` proxy) |
+The API cannot set these to a satellite domain; the app passes `sign_in_force_redirect_url` on Account Portal links as a safeguard.

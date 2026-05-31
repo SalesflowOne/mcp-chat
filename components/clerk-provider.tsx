@@ -8,6 +8,8 @@ import {
   getClerkPrimarySignUpUrl,
   getClerkProxyUrl,
   getClerkSatelliteDomain,
+  getClerkSatelliteSignInPath,
+  getClerkSatelliteSignUpPath,
   isClerkSatelliteApp,
 } from '@/lib/clerk-config';
 
@@ -31,8 +33,12 @@ export function AppClerkProvider({ children }: { children: React.ReactNode }) {
         : isSatellite
           ? { domain: getClerkSatelliteDomain() }
           : {})}
-      signInUrl={getClerkPrimarySignInUrl()}
-      signUpUrl={getClerkPrimarySignUpUrl()}
+      signInUrl={
+        isSatellite ? getClerkSatelliteSignInPath() : getClerkPrimarySignInUrl()
+      }
+      signUpUrl={
+        isSatellite ? getClerkSatelliteSignUpPath() : getClerkPrimarySignUpUrl()
+      }
       signInFallbackRedirectUrl={forceRedirectUrl ?? '/'}
       signUpFallbackRedirectUrl={forceRedirectUrl ?? '/'}
       signInForceRedirectUrl={forceRedirectUrl}

@@ -34,10 +34,12 @@ export async function POST(request: Request) {
       id,
       messages,
       selectedChatModel,
+      spaceId,
     }: {
       id: string
       messages: Array<UIMessage>
       selectedChatModel: string
+      spaceId?: string
     } = await request.json()
 
     const session = await getEffectiveSession()
@@ -119,7 +121,9 @@ export async function POST(request: Request) {
 
     return createDataStreamResponse({
       execute: async (dataStream) => {
-        const system = systemPrompt({ selectedChatModel })
+        const { isSupabaseConfigured } = await import('@/lib/supabase/config')
+        const includeSpaces = isSupabaseConfigured()
+        const system = systemPrompt({ selectedChatModel, includeSpaces })
         await streamText(
           { dataStream, userMessage },
           {
@@ -129,7 +133,18 @@ export async function POST(request: Request) {
             maxSteps: 20,
             experimental_transform: smoothStream({ chunking: "word" }),
             experimental_generateMessageId: generateUUID,
-            getTools: () => mcpSession.tools({ useCache: false }),
+            getTools: async () => {
+              const mcpTools = await mcpSession.tools({ useCache: false })
+              if (!includeSpaces) {
+                return mcpTools
+              }
+              const { getSpaceTools } = await import('@/lib/spaces/tools')
+              const spaceTools = await getSpaceTools({
+                chatThreadId: id,
+                spaceId,
+              })
+              return { ...mcpTools, ...spaceTools }
+            },
             onFinish: async ({ response, usage }) => {
               if (appUserId && shouldPersistData()) {
                 try {

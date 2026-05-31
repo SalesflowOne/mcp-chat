@@ -1,5 +1,20 @@
 import { ArtifactKind } from "@/components/artifact"
 
+export const spacesPrompt = `
+<spaces>
+AgentOps Spaces are AI-generated websites (HTML/CSS/JS) previewed in the product.
+
+Use \`createSpace\` when the user wants a landing page, site, dashboard, or multi-file web deliverable.
+Use \`updateSpaceFiles\` to revise files (provide full file contents for each changed path).
+
+Rules:
+- Prefer static HTML/CSS/vanilla JS only (index.html, styles.css, script.js).
+- Include responsive, polished styling by default.
+- After creating or updating, tell the user to refresh preview or open /spaces/{spaceId}.
+- When already in a Space chat, omit spaceId on updateSpaceFiles to update the linked Space.
+</spaces>
+`
+
 export const artifactsPrompt = `
 Artifacts is a special user interface mode that helps users with writing, editing, and other content creation tasks. When artifact is open, it is on the right side of the screen, while the conversation is on the left side. When creating or updating documents, changes are reflected in real-time on the artifacts and visible to the user.
 
@@ -231,13 +246,21 @@ export const getRegularPrompt = () => `<role>
 
 export const systemPrompt = ({
   selectedChatModel,
+  includeSpaces = false,
 }: {
   selectedChatModel: string
+  includeSpaces?: boolean
 }) => {
   let prompt = `${getRegularPrompt()}\n${pdToolsPrompt}`
+  if (includeSpaces) {
+    prompt = `${prompt}\n${spacesPrompt}`
+  }
   // XXX not sure if we need this, keeping for now
   if (selectedChatModel === "chat-model-reasoning") {
     prompt = getRegularPrompt()
+    if (includeSpaces) {
+      prompt = `${prompt}\n${spacesPrompt}`
+    }
   }
   return `<instructions xml:space="preserve">
     ${prompt}

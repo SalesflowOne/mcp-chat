@@ -21,6 +21,8 @@ const isPublicRoute = createRouteMatcher([
   '/register(.*)',
   '/healthcheck',
   '/api/auth(.*)',
+  '/api/public/spaces(.*)',
+  '/share/spaces(.*)',
   '/opengraph-image(.*)',
   '/twitter-image(.*)',
 ]);

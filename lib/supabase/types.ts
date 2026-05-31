@@ -65,6 +65,33 @@ export type ChatMessageRow = {
   created_at: string;
 };
 
+export type SpaceRow = {
+  id: string;
+  organization_id: string;
+  created_by: string | null;
+  chat_thread_id: string | null;
+  title: string;
+  slug: string;
+  status: string;
+  preview_kind: string;
+  visibility: string;
+  metadata: Json;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SpaceFileRow = {
+  id: string;
+  space_id: string;
+  organization_id: string;
+  path: string;
+  content: string | null;
+  storage_path: string | null;
+  mime_type: string;
+  byte_size: number;
+  updated_at: string;
+};
+
 export type UsageEventRow = {
   id: string;
   organization_id: string;
@@ -102,6 +129,11 @@ export type Database = {
       connected_accounts: { Row: Record<string, unknown>; Insert: Record<string, unknown>; Update: Record<string, unknown> };
       usage_events: { Row: UsageEventRow; Insert: Partial<UsageEventRow> & Pick<UsageEventRow, 'organization_id' | 'event_type'>; Update: Partial<UsageEventRow> };
       audit_logs: { Row: AuditLogRow; Insert: Partial<AuditLogRow> & Pick<AuditLogRow, 'action'>; Update: Partial<AuditLogRow> };
+      spaces: { Row: SpaceRow; Insert: Partial<SpaceRow> & Pick<SpaceRow, 'organization_id' | 'title' | 'slug'>; Update: Partial<SpaceRow> };
+      space_files: { Row: SpaceFileRow; Insert: Partial<SpaceFileRow> & Pick<SpaceFileRow, 'space_id' | 'organization_id' | 'path'>; Update: Partial<SpaceFileRow> };
+      space_versions: { Row: Record<string, unknown>; Insert: Record<string, unknown>; Update: Record<string, unknown> };
+      space_share_links: { Row: Record<string, unknown>; Insert: Record<string, unknown>; Update: Record<string, unknown> };
+      space_deployments: { Row: Record<string, unknown>; Insert: Record<string, unknown>; Update: Record<string, unknown> };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

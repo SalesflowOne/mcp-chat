@@ -23,6 +23,8 @@ export function Chat({
   selectedVisibilityType,
   isReadonly,
   hasAPIKeys,
+  spaceId,
+  onSpaceUpdated,
 }: {
   id: string;
   initialMessages: Array<UIMessage>;
@@ -30,7 +32,11 @@ export function Chat({
   selectedVisibilityType: VisibilityType;
   isReadonly: boolean;
   hasAPIKeys?: boolean;
+  /** When set, chat runs in Space mode (no artifact panel; Space tools enabled). */
+  spaceId?: string;
+  onSpaceUpdated?: () => void;
 }) {
+  const spaceMode = Boolean(spaceId);
   const { mutate } = useSWRConfig();
   const { data: session } = useEffectiveSession();
   const isSignedIn = !!session?.user;
@@ -47,13 +53,18 @@ export function Chat({
     reload,
   } = useChat({
     id,
-    body: { id, selectedChatModel: selectedChatModel },
+    body: {
+      id,
+      selectedChatModel: selectedChatModel,
+      ...(spaceId ? { spaceId } : {}),
+    },
     initialMessages,
     experimental_throttle: 100,
     sendExtraMessageFields: true,
     generateId: generateUUID,
     onFinish: () => {
       mutate("/api/history");
+      onSpaceUpdated?.();
     },
     onError: (error) => {
       // Check if error is a 401 unauthorized due to authentication
@@ -240,13 +251,17 @@ export function Chat({
   // Default layout for signed-in users
   return (
     <>
-      <div className="flex flex-col min-w-0 h-dvh bg-background">
-        <ChatHeader
-          chatId={id}
-          selectedModelId={selectedChatModel}
-          selectedVisibilityType={selectedVisibilityType}
-          isReadonly={isReadonly}
-        />
+      <div
+        className={`flex min-w-0 flex-col bg-background ${spaceMode ? 'h-full min-h-0' : 'h-dvh'}`}
+      >
+        {!spaceMode && (
+          <ChatHeader
+            chatId={id}
+            selectedModelId={selectedChatModel}
+            selectedVisibilityType={selectedVisibilityType}
+            isReadonly={isReadonly}
+          />
+        )}
 
         <Messages
           chatId={id}
@@ -256,11 +271,13 @@ export function Chat({
           setMessages={setMessages}
           reload={reload}
           isReadonly={isReadonly}
-          isArtifactVisible={isArtifactVisible}
+          isArtifactVisible={spaceMode ? false : isArtifactVisible}
           append={append}
         />
 
-        <form className="flex mx-auto px-4 bg-background pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">
+        <form
+          className={`flex gap-2 bg-background px-4 pb-4 md:pb-6 ${spaceMode ? 'w-full' : 'mx-auto w-full md:max-w-3xl'}`}
+        >
           {!isReadonly && (
             <MultimodalInput
               chatId={id}
@@ -279,22 +296,24 @@ export function Chat({
         </form>
       </div>
 
-      <Artifact
-        chatId={id}
-        input={input}
-        setInput={setInput}
-        handleSubmit={handleSubmit}
-        status={status}
-        stop={stop}
-        attachments={attachments}
-        setAttachments={setAttachments}
-        append={append}
-        messages={messages}
-        setMessages={setMessages}
-        reload={reload}
-        votes={votes}
-        isReadonly={isReadonly}
-      />
+      {!spaceMode && (
+        <Artifact
+          chatId={id}
+          input={input}
+          setInput={setInput}
+          handleSubmit={handleSubmit}
+          status={status}
+          stop={stop}
+          attachments={attachments}
+          setAttachments={setAttachments}
+          append={append}
+          messages={messages}
+          setMessages={setMessages}
+          reload={reload}
+          votes={votes}
+          isReadonly={isReadonly}
+        />
+      )}
     </>
   );
 }

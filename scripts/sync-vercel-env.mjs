@@ -29,15 +29,15 @@ const KEYS_TO_SET = {
   DISABLE_AUTH: 'false',
   DISABLE_PERSISTENCE: 'false',
   NEXT_PUBLIC_CLERK_IS_SATELLITE: 'true',
-  NEXT_PUBLIC_CLERK_DOMAIN: 'www.agentops.one',
-  NEXT_PUBLIC_CLERK_PROXY_URL: 'https://www.agentops.one/__clerk',
+  NEXT_PUBLIC_CLERK_DOMAIN: 'agentops.one',
+  NEXT_PUBLIC_CLERK_PROXY_URL: 'https://agentops.one/__clerk',
   NEXT_PUBLIC_CLERK_SIGN_IN_URL: 'https://accounts.oneaccess.one/sign-in',
   NEXT_PUBLIC_CLERK_SIGN_UP_URL: 'https://accounts.oneaccess.one/sign-up',
-  NEXT_PUBLIC_APP_URL: 'https://www.agentops.one',
-  NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: 'https://www.agentops.one/',
-  NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: 'https://www.agentops.one/',
-  NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL: 'https://www.agentops.one/',
-  NEXT_PUBLIC_CLERK_SIGN_UP_FORCE_REDIRECT_URL: 'https://www.agentops.one/',
+  NEXT_PUBLIC_APP_URL: 'https://agentops.one',
+  NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: 'https://agentops.one/',
+  NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: 'https://agentops.one/',
+  NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL: 'https://agentops.one/',
+  NEXT_PUBLIC_CLERK_SIGN_UP_FORCE_REDIRECT_URL: 'https://agentops.one/',
 };
 
 const token = process.env.VERCEL_TOKEN;

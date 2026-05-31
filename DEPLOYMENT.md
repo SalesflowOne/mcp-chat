@@ -1,50 +1,54 @@
 ## Clerk setup (agentops.one satellite)
 
-`agentops.one` is a **Clerk satellite** on the One OS instance (`oneaccess.one` primary). Embedded `<SignIn />` on the satellite domain is blocked by Clerk.
+`agentops.one` is a **Clerk satellite** on the One OS Clerk instance (primary domain `oneaccess.one` — DNS not required for app traffic; only Clerk Account Portal / FAPI use it today). Embedded `<SignIn />` on the satellite domain is blocked by Clerk.
 
-**Account Portal (sign-in):** `https://accounts.oneaccess.one/sign-in` until `accounts.agentops.one` DNS exists.
+**Account Portal (sign-in):** `https://accounts.oneaccess.one/sign-in` (same pattern as other satellites until `accounts.agentops.one` DNS exists).
 
-### Auth flow (after this fix)
+### Auth flow
 
-1. User opens `https://www.agentops.one/sign-in` (apex redirects to www).
+1. User opens `https://agentops.one/sign-in` (www redirects to apex via `vercel.json`).
 2. Client calls `Clerk.buildSignInUrl()` → Account Portal with `redirect_url` including `__clerk_sync=1`.
 3. User signs in on `accounts.oneaccess.one`.
-4. Clerk redirects back to `https://www.agentops.one/?__clerk_sync=1` and the satellite syncs the session.
-5. FAPI traffic uses `https://www.agentops.one/__clerk` (proxied by Next.js middleware). Use **www** — Vercel redirects apex to www and Clerk rejects a proxy on a different host than the browser.
+4. Clerk redirects back to `https://agentops.one/` and the satellite syncs the session.
+5. FAPI uses `https://agentops.one/__clerk` (Next.js middleware proxy).
 
-Do **not** hardcode Account Portal links without `buildSignInUrl()` — session sync will fail.
+Do **not** hardcode Account Portal URLs without `buildSignInUrl()` — session sync will fail.
 
 ### Vercel env
 
 | Variable | Value |
 |----------|--------|
 | `NEXT_PUBLIC_CLERK_IS_SATELLITE` | `true` |
-| `NEXT_PUBLIC_CLERK_DOMAIN` | `www.agentops.one` |
-| `NEXT_PUBLIC_CLERK_PROXY_URL` | `https://www.agentops.one/__clerk` |
+| `NEXT_PUBLIC_CLERK_DOMAIN` | `agentops.one` |
+| `NEXT_PUBLIC_CLERK_PROXY_URL` | `https://agentops.one/__clerk` |
 | `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `https://accounts.oneaccess.one/sign-in` |
 | `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `https://accounts.oneaccess.one/sign-up` |
-| `NEXT_PUBLIC_APP_URL` | `https://www.agentops.one` |
-| `NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL` | `https://www.agentops.one/` |
-| `NEXT_PUBLIC_CLERK_SIGN_UP_FORCE_REDIRECT_URL` | `https://www.agentops.one/` |
+| `NEXT_PUBLIC_APP_URL` | `https://agentops.one` |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL` | `https://agentops.one/` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_FORCE_REDIRECT_URL` | `https://agentops.one/` |
 
-Run `node scripts/sync-vercel-env.mjs` (needs `VERCEL_TOKEN`) or set these in the Vercel dashboard.
+Run `node scripts/sync-vercel-env.mjs` (needs `VERCEL_TOKEN`) or set in the Vercel dashboard.
 
-Run `node scripts/fix-clerk-auth.mjs` (needs `CLERK_SECRET_KEY`) to refresh allowed redirect origins and the satellite proxy URL in Clerk.
+Run `node scripts/fix-clerk-auth.mjs` (needs `CLERK_SECRET_KEY`) for allowed redirect origins + satellite proxy URL.
 
-### Clerk Dashboard (required once)
+### Vercel domains
 
-**Configure → Paths** — the instance still defaults to `https://oneaccess.one` (no DNS). Set:
+Canonical host is **apex** `agentops.one` (like `clawops.one`). `vercel.json` redirects `www.agentops.one` → `agentops.one`.
+
+In **Vercel → Project → Domains**, avoid a project-level rule that sends `agentops.one` → `www` (that breaks the Clerk proxy). Prefer apex as primary.
+
+### Clerk Dashboard (recommended)
+
+**Configure → Paths** — instance defaults may still point at `https://oneaccess.one` (no DNS). Set:
 
 | Setting | Value |
 |---------|--------|
-| Home URL | `https://www.agentops.one` |
-| After sign-in URL | `https://www.agentops.one` |
-| After sign-up URL | `https://www.agentops.one` |
-| Logo link URL | `https://www.agentops.one` |
+| Home URL | `https://agentops.one` |
+| After sign-in URL | `https://agentops.one` |
+| After sign-up URL | `https://agentops.one` |
+| Logo link URL | `https://agentops.one` |
 
-The Backend API cannot set `home_url` to a satellite domain; this must be done in the dashboard (or add DNS for apex `oneaccess.one`).
-
-**Configure → Domains → www.agentops.one (satellite)** — proxy URL should be `https://www.agentops.one/__clerk` (set automatically by `scripts/fix-clerk-auth.mjs`).
+**Configure → Domains → agentops.one (satellite)** — proxy URL: `https://agentops.one/__clerk`.
 
 ### Optional DNS
 
@@ -52,6 +56,3 @@ The Backend API cannot set `home_url` to a satellite domain; this must be done i
 |------|------|--------|
 | `accounts.agentops.one` | CNAME | `accounts.clerk.services` |
 | `clerk.agentops.one` | CNAME | `frontend-api.clerk.services` (optional if using `__clerk` proxy) |
-| `oneaccess.one` | A/ALIAS or redirect | Point to a live app or redirect to `https://www.agentops.one` |
-
-Do **not** use apex `oneaccess.one` without DNS — users will see `DNS_PROBE_FINISHED_NXDOMAIN`.

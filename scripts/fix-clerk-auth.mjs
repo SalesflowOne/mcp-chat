@@ -9,13 +9,13 @@ if (!secret?.startsWith('sk_')) {
   process.exit(1);
 }
 
-const WWW_SATELLITE_DOMAIN_ID = 'dmn_3EVSid5DaCVNXRZE9E4Emketn3q';
+const AGENTOPS_SATELLITE_DOMAIN_ID = 'dmn_3ET5dadhn3yLUlfoD75rlV1SOH8';
 const ALLOWED_ORIGINS = [
   'https://agentops.one',
   'https://www.agentops.one',
   'https://accounts.oneaccess.one',
 ];
-const PROXY_URL = 'https://www.agentops.one/__clerk';
+const PROXY_URL = 'https://agentops.one/__clerk';
 
 async function clerkFetch(path, init = {}) {
   const res = await fetch(`https://api.clerk.com/v1${path}`, {
@@ -44,8 +44,8 @@ async function main() {
   });
   console.log(instance.ok ? '  OK' : `  FAILED ${instance.status}`, instance.body?.errors ?? '');
 
-  console.log('Configuring www.agentops.one satellite FAPI proxy…');
-  const domain = await clerkFetch(`/domains/${WWW_SATELLITE_DOMAIN_ID}`, {
+  console.log('Configuring agentops.one satellite FAPI proxy…');
+  const domain = await clerkFetch(`/domains/${AGENTOPS_SATELLITE_DOMAIN_ID}`, {
     method: 'PATCH',
     body: JSON.stringify({ proxy_url: PROXY_URL }),
   });
@@ -56,7 +56,7 @@ async function main() {
 
   console.log('\nClerk Dashboard (manual, required for dead oneaccess.one redirects):');
   console.log('  Configure → Paths → set Home / After sign-in / After sign-up to:');
-  console.log('  https://www.agentops.one');
+  console.log('  https://agentops.one');
   console.log('  (API cannot set home_url to a satellite domain; apex oneaccess.one has no DNS)');
 }
 

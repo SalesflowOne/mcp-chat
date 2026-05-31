@@ -7,11 +7,10 @@
  * Embedded <SignIn /> is blocked on satellite domains by Clerk.
  */
 
-/** Must match the hostname users browse (Vercel redirects apex → www). */
-export const DEFAULT_SATELLITE_DOMAIN = 'www.agentops.one';
+export const DEFAULT_SATELLITE_DOMAIN = 'agentops.one';
 
-/** Production canonical app origin (Vercel redirects apex → www). */
-export const DEFAULT_APP_ORIGIN = 'https://www.agentops.one';
+/** Production app origin (apex — same pattern as clawops.one / other One OS satellites). */
+export const DEFAULT_APP_ORIGIN = 'https://agentops.one';
 
 /** Clerk FAPI proxy path on the satellite app (see DEPLOYMENT.md). */
 export const CLERK_FAPI_PROXY_PATH = '/__clerk';
@@ -51,7 +50,7 @@ export function isClerkSatelliteApp(): boolean {
     return true;
   }
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() ?? '';
-  return appUrl.includes(DEFAULT_SATELLITE_DOMAIN);
+  return appUrl.includes('agentops.one');
 }
 
 export function getClerkSatelliteDomain(): string {

@@ -10,6 +10,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+  buildAccountPortalSignInUrl,
+  buildSatelliteReturnUrl,
+  getClerkPrimarySignUpUrl,
+  isClerkSatelliteApp,
+} from '@/lib/clerk-config';
 
 interface SignInModalProps {
   isOpen: boolean;
@@ -17,6 +23,17 @@ interface SignInModalProps {
 }
 
 export function SignInModal({ isOpen, onClose }: SignInModalProps) {
+  const signInHref = isClerkSatelliteApp()
+    ? buildAccountPortalSignInUrl('/')
+    : '/sign-in';
+  const signUpHref = isClerkSatelliteApp()
+    ? (() => {
+        const signUp = new URL(getClerkPrimarySignUpUrl());
+        signUp.searchParams.set('redirect_url', buildSatelliteReturnUrl('/'));
+        return signUp.toString();
+      })()
+    : '/sign-up';
+
   return (
     <AlertDialog
       open={isOpen}
@@ -71,12 +88,12 @@ export function SignInModal({ isOpen, onClose }: SignInModalProps) {
 
           <div className="flex flex-col gap-3 w-full max-w-xs">
             <Button asChild variant="blue" className="w-full">
-              <Link href="/sign-in" onClick={onClose}>
+              <Link href={signInHref} onClick={onClose}>
                 Sign in
               </Link>
             </Button>
             <Button asChild variant="outline" className="w-full">
-              <Link href="/sign-up" onClick={onClose}>
+              <Link href={signUpHref} onClick={onClose}>
                 Create account
               </Link>
             </Button>

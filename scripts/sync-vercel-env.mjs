@@ -28,8 +28,11 @@ const KEY_ALIASES = {
 const KEYS_TO_SET = {
   DISABLE_AUTH: 'false',
   DISABLE_PERSISTENCE: 'false',
-  NEXT_PUBLIC_CLERK_SIGN_IN_URL: '/sign-in',
-  NEXT_PUBLIC_CLERK_SIGN_UP_URL: '/sign-up',
+  NEXT_PUBLIC_CLERK_IS_SATELLITE: 'true',
+  NEXT_PUBLIC_CLERK_DOMAIN: 'agentops.one',
+  NEXT_PUBLIC_CLERK_SIGN_IN_URL: 'https://accounts.agentops.one/sign-in',
+  NEXT_PUBLIC_CLERK_SIGN_UP_URL: 'https://accounts.agentops.one/sign-up',
+  NEXT_PUBLIC_APP_URL: 'https://agentops.one',
   NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: '/',
   NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: '/',
 };

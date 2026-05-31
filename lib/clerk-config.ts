@@ -9,6 +9,12 @@
 
 export const DEFAULT_SATELLITE_DOMAIN = 'agentops.one';
 
+/** Production canonical app origin (Vercel redirects apex → www). */
+export const DEFAULT_APP_ORIGIN = 'https://www.agentops.one';
+
+/** Clerk FAPI proxy path on the satellite app (see DEPLOYMENT.md). */
+export const CLERK_FAPI_PROXY_PATH = '/__clerk';
+
 /**
  * Clerk Account Portal hostnames (same One OS instance).
  * accounts.agentops.one — preferred branding; requires DNS (CNAME → accounts.clerk.services)
@@ -69,11 +75,41 @@ export function getClerkPrimarySignUpUrl(): string {
   return CLERK_ACCOUNT_PORTAL_SIGN_UP_URL;
 }
 
+export function getAppOrigin(): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (configured?.startsWith('http')) {
+    return configured.replace(/\/$/, '');
+  }
+  return DEFAULT_APP_ORIGIN;
+}
+
 export function buildSatelliteReturnUrl(path = '/'): string {
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    `https://${getClerkSatelliteDomain()}`;
-  return new URL(path, base.endsWith('/') ? base : `${base}/`).toString();
+  const base = getAppOrigin();
+  return new URL(path, `${base}/`).toString();
+}
+
+/**
+ * Clerk Core 3 satellite handshake trigger (see clerk/javascript CHANGELOG).
+ * Appended to return URLs when buildSignInUrl() is unavailable (SSR fallbacks).
+ */
+export function appendSatelliteSyncParam(url: string): string {
+  const parsed = new URL(url);
+  if (!parsed.searchParams.has('__clerk_sync')) {
+    parsed.searchParams.set('__clerk_sync', '1');
+  }
+  return parsed.toString();
+}
+
+/** Proxy FAPI through the Next app when clerk.{domain} is blocked (must match Clerk domain settings). */
+export function getClerkProxyUrl(): string | undefined {
+  const fromEnv = process.env.NEXT_PUBLIC_CLERK_PROXY_URL?.trim();
+  if (fromEnv?.startsWith('http')) {
+    return fromEnv.replace(/\/$/, '');
+  }
+  if (!isClerkSatelliteApp()) {
+    return undefined;
+  }
+  return `https://${getClerkSatelliteDomain()}${CLERK_FAPI_PROXY_PATH}`;
 }
 
 /** Absolute URL Clerk must use after auth — overrides dead oneaccess.one dashboard defaults when set. */
@@ -91,14 +127,14 @@ export function getClerkForceRedirectUrl(path = '/'): string {
  * redirect_url + force redirect env must point at agentops.one.
  */
 export function buildAccountPortalSignInUrl(returnPath = '/'): string {
-  const returnUrl = buildSatelliteReturnUrl(returnPath);
+  const returnUrl = appendSatelliteSyncParam(buildSatelliteReturnUrl(returnPath));
   const signIn = new URL(getClerkPrimarySignInUrl());
   signIn.searchParams.set('redirect_url', returnUrl);
   return signIn.toString();
 }
 
 export function buildAccountPortalSignUpUrl(returnPath = '/'): string {
-  const returnUrl = buildSatelliteReturnUrl(returnPath);
+  const returnUrl = appendSatelliteSyncParam(buildSatelliteReturnUrl(returnPath));
   const signUp = new URL(getClerkPrimarySignUpUrl());
   signUp.searchParams.set('redirect_url', returnUrl);
   return signUp.toString();
@@ -109,11 +145,23 @@ export function getClerkMiddlewareOptions() {
     return undefined;
   }
 
-  return {
+  const proxyUrl = getClerkProxyUrl();
+  const options: Record<string, unknown> = {
     isSatellite: true,
-    domain: getClerkSatelliteDomain(),
     signInUrl: getClerkPrimarySignInUrl(),
     signUpUrl: getClerkPrimarySignUpUrl(),
     satelliteAutoSync: false,
+    frontendApiProxy: {
+      enabled: true,
+      path: CLERK_FAPI_PROXY_PATH,
+    },
   };
+
+  if (proxyUrl) {
+    options.proxyUrl = proxyUrl;
+  } else {
+    options.domain = getClerkSatelliteDomain();
+  }
+
+  return options;
 }

@@ -1,14 +1,10 @@
-import { redirect } from 'next/navigation';
-
 import { ClerkSignInView } from '@/components/auth/clerk-sign-in-view';
-import {
-  buildAccountPortalSignInUrl,
-  isClerkSatelliteApp,
-} from '@/lib/clerk-config';
+import { SatelliteAuthRedirect } from '@/components/auth/satellite-auth-redirect';
+import { isClerkSatelliteApp } from '@/lib/clerk-config';
 
 export default function SignInPage() {
   if (isClerkSatelliteApp()) {
-    redirect(buildAccountPortalSignInUrl('/'));
+    return <SatelliteAuthRedirect mode="sign-in" />;
   }
 
   return (

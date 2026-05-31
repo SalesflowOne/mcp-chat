@@ -2,6 +2,8 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+
+import { SatelliteAuthLink } from '@/components/auth/satellite-auth-link';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -82,16 +84,33 @@ export function SignInModal({ isOpen, onClose }: SignInModalProps) {
           </AlertDialogHeader>
 
           <div className="flex flex-col gap-3 w-full max-w-xs">
-            <Button asChild variant="blue" className="w-full">
-              <Link href={signInHref} onClick={onClose}>
-                Sign in
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link href={signUpHref} onClick={onClose}>
-                Create account
-              </Link>
-            </Button>
+            {isClerkSatelliteApp() ? (
+              <>
+                <Button asChild variant="blue" className="w-full">
+                  <SatelliteAuthLink mode="sign-in" onClick={onClose}>
+                    Sign in
+                  </SatelliteAuthLink>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <SatelliteAuthLink mode="sign-up" onClick={onClose}>
+                    Create account
+                  </SatelliteAuthLink>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button asChild variant="blue" className="w-full">
+                  <Link href={signInHref} onClick={onClose}>
+                    Sign in
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href={signUpHref} onClick={onClose}>
+                    Create account
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </AlertDialogContent>

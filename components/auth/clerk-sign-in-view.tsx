@@ -1,28 +1,34 @@
 'use client';
 
-import { SignIn, useAuth } from '@clerk/nextjs';
+import { SignIn, useAuth, useClerk } from '@clerk/nextjs';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 import {
   buildAccountPortalSignInUrl,
+  getClerkForceRedirectUrl,
   isClerkSatelliteApp,
 } from '@/lib/clerk-config';
 
-/** Non-satellite only — satellites redirect to Account Portal */
+/** Non-satellite only — satellites use SatelliteAuthRedirect */
 export function ClerkSignInView() {
   const { isLoaded, isSignedIn } = useAuth();
+  const clerk = useClerk();
   const router = useRouter();
 
   useEffect(() => {
     if (isClerkSatelliteApp()) {
-      window.location.replace(buildAccountPortalSignInUrl('/'));
+      const returnUrl = getClerkForceRedirectUrl('/');
+      const url = clerk.loaded
+        ? clerk.buildSignInUrl({ signInForceRedirectUrl: returnUrl })
+        : buildAccountPortalSignInUrl('/');
+      window.location.replace(url);
       return;
     }
     if (isLoaded && isSignedIn) {
       router.replace('/');
     }
-  }, [isLoaded, isSignedIn, router]);
+  }, [isLoaded, isSignedIn, router, clerk.loaded, clerk]);
 
   if (!isLoaded) {
     return (

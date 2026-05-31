@@ -1,14 +1,10 @@
-import { redirect } from 'next/navigation';
-
 import { ClerkSignUpView } from '@/components/auth/clerk-sign-up-view';
-import {
-  buildAccountPortalSignUpUrl,
-  isClerkSatelliteApp,
-} from '@/lib/clerk-config';
+import { SatelliteAuthRedirect } from '@/components/auth/satellite-auth-redirect';
+import { isClerkSatelliteApp } from '@/lib/clerk-config';
 
 export default function SignUpPage() {
   if (isClerkSatelliteApp()) {
-    redirect(buildAccountPortalSignUpUrl('/'));
+    return <SatelliteAuthRedirect mode="sign-up" />;
   }
 
   return (

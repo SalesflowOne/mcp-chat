@@ -6,6 +6,7 @@ import {
   getClerkForceRedirectUrl,
   getClerkPrimarySignInUrl,
   getClerkPrimarySignUpUrl,
+  getClerkProxyUrl,
   getClerkSatelliteDomain,
   isClerkSatelliteApp,
 } from '@/lib/clerk-config';
@@ -19,12 +20,17 @@ export function AppClerkProvider({ children }: { children: React.ReactNode }) {
 
   const isSatellite = isClerkSatelliteApp();
   const forceRedirectUrl = isSatellite ? getClerkForceRedirectUrl('/') : undefined;
+  const proxyUrl = isSatellite ? getClerkProxyUrl() : undefined;
 
   return (
     <ClerkProvider
       publishableKey={publishableKey}
       isSatellite={isSatellite}
-      domain={isSatellite ? getClerkSatelliteDomain() : undefined}
+      {...(proxyUrl
+        ? { proxyUrl }
+        : isSatellite
+          ? { domain: getClerkSatelliteDomain() }
+          : {})}
       signInUrl={getClerkPrimarySignInUrl()}
       signUpUrl={getClerkPrimarySignUpUrl()}
       signInFallbackRedirectUrl={forceRedirectUrl ?? '/'}

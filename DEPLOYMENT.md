@@ -35,7 +35,7 @@ Run `node scripts/fix-clerk-auth.mjs` (needs `CLERK_SECRET_KEY`) for allowed red
 
 Canonical host is **apex** `agentops.one` (like `clawops.one`). `vercel.json` redirects `www.agentops.one` → `agentops.one`.
 
-In **Vercel → Project → Domains**, avoid a project-level rule that sends `agentops.one` → `www` (that breaks the Clerk proxy). Prefer apex as primary.
+In **Vercel → Project → Domains**, apex `agentops.one` must **not** redirect to www (that breaks the Clerk proxy). Run `node scripts/fix-vercel-agentops-domains.mjs` (needs `VERCEL_TOKEN`) to set apex as primary and `www` → apex (308).
 
 ### Clerk Dashboard (recommended)
 

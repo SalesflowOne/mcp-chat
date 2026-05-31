@@ -4,6 +4,14 @@ import type { NextFetchEvent, NextRequest } from 'next/server';
 
 const isAuthDisabled = process.env.DISABLE_AUTH === 'true';
 
+function isValidClerkPublishableKey(key: string | undefined): boolean {
+  return Boolean(key?.trim().startsWith('pk_'));
+}
+
+function isValidClerkSecretKey(key: string | undefined): boolean {
+  return Boolean(key?.trim().startsWith('sk_'));
+}
+
 const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
@@ -34,17 +42,22 @@ export default function middleware(request: NextRequest, event: NextFetchEvent) 
     return NextResponse.next();
   }
 
-  if (
-    !process.env.CLERK_SECRET_KEY?.trim() ||
-    !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim()
-  ) {
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const secretKey = process.env.CLERK_SECRET_KEY;
+
+  if (!isValidClerkPublishableKey(publishableKey) || !isValidClerkSecretKey(secretKey)) {
     console.warn(
-      'Clerk is not configured; set CLERK_SECRET_KEY and NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY or DISABLE_AUTH=true',
+      'Clerk keys missing or invalid (expected pk_* and sk_*); bypassing middleware. Fix Vercel env or set DISABLE_AUTH=true',
     );
     return NextResponse.next();
   }
 
-  return clerkHandler(request, event);
+  try {
+    return clerkHandler(request, event);
+  } catch (error) {
+    console.error('Clerk middleware failed', error);
+    return NextResponse.next();
+  }
 }
 
 export const config = {

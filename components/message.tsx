@@ -20,6 +20,7 @@ import { MessageReasoning } from './message-reasoning';
 import { UseChatHelpers } from '@ai-sdk/react';
 import { ToolCallRunning } from './tool-call-running';
 import { ToolCallResult } from './tool-call-result';
+import { SpaceToolResult } from './spaces/space-tool-result';
 
 const PurePreviewMessage = ({
   chatId,
@@ -178,6 +179,10 @@ const PurePreviewMessage = ({
                           args={args}
                           isReadonly={isReadonly}
                         />
+                      ) : toolName === 'createSpace' || toolName === 'updateSpaceFiles' ? (
+                        <div className="text-sm text-muted-foreground">
+                          {toolName === 'createSpace' ? 'Creating Space…' : 'Updating Space files…'}
+                        </div>
                       ) : (
                         <ToolCallRunning name={toolName} toolCallId={toolCallId} />
                       )}
@@ -207,7 +212,11 @@ const PurePreviewMessage = ({
                           result={result}
                           isReadonly={isReadonly}
                         />
-                      ) : <ToolCallResult name={toolName} result={result} args={args} append={append} toolCallId={toolCallId} />}
+                      ) : toolName === 'createSpace' || toolName === 'updateSpaceFiles' ? (
+                        <SpaceToolResult result={result} />
+                      ) : (
+                        <ToolCallResult name={toolName} result={result} args={args} append={append} toolCallId={toolCallId} />
+                      )}
                     </div>
                   );
                 }

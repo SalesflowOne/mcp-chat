@@ -26,6 +26,7 @@
     "@ai-sdk/react": "^1.2.12",
     "@ai-sdk/xai": "^1.2.1",
     "@auth/drizzle-adapter": "^1.8.0",
+    "@clerk/nextjs": "^7.4.2",
     "@codemirror/lang-javascript": "^6.2.2",
     "@codemirror/lang-python": "^6.1.6",
     "@codemirror/state": "^6.5.0",

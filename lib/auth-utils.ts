@@ -1,22 +1,36 @@
 import 'server-only';
 
-import { auth } from '@/app/(auth)/auth';
+import { auth, currentUser } from '@clerk/nextjs/server';
+
 import { isAuthDisabled, isPersistenceDisabled } from '@/lib/constants';
+import type { AppSession } from '@/lib/auth-session';
 import { createGuestSession } from '@/lib/utils';
 
-// Shared helper for API routes to get effective session
-export async function getEffectiveSession() {
-  const session = await auth();
-  
+export async function getEffectiveSession(): Promise<AppSession | null> {
   if (isAuthDisabled) {
-    // In dev mode with auth disabled, always return a guest session
     return createGuestSession();
-  } else {
-    return session;
   }
+
+  const { userId } = await auth();
+
+  if (!userId) {
+    return null;
+  }
+
+  const user = await currentUser();
+
+  return {
+    user: {
+      id: userId,
+      name:
+        user?.fullName ||
+        [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+        'User',
+      email: user?.emailAddresses[0]?.emailAddress ?? '',
+    },
+  };
 }
 
-// Helper to check if we should persist data to database
 export function shouldPersistData() {
   return !isPersistenceDisabled;
 }

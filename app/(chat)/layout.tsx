@@ -1,13 +1,13 @@
 import { cookies } from 'next/headers';
 import { Suspense } from 'react';
+import Script from 'next/script';
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { auth } from '../(auth)/auth';
-import Script from 'next/script';
 import { SessionProvider } from '@/components/session-provider';
 import { SignedOutHeader } from '@/components/signed-out-header';
 import { isAuthDisabled, isPersistenceDisabled } from '@/lib/constants';
+import { getEffectiveSession } from '@/lib/auth-utils';
 import { createGuestSession } from '@/lib/utils';
 
 export default function Layout({
@@ -29,23 +29,23 @@ export default function Layout({
 }
 
 async function LayoutContent({ children }: { children: React.ReactNode }) {
-  const [rawSession, cookieStore] = await Promise.all([auth(), cookies()]);
+  const cookieStore = await cookies();
   const isCollapsed = cookieStore.get('sidebar:state')?.value !== 'true';
 
-  // Use effective session (real or guest based on auth requirement)
-  const session = isAuthDisabled ? createGuestSession() : rawSession;
+  const session = await getEffectiveSession();
+  const guestSession = isAuthDisabled ? createGuestSession() : undefined;
   const isSignedIn = !!session?.user;
 
   return (
     <SessionProvider
       isAuthDisabled={isAuthDisabled}
       isPersistenceDisabled={isPersistenceDisabled}
-      guestSession={isAuthDisabled ? session : undefined}
+      guestSession={guestSession}
     >
       <SidebarProvider defaultOpen={!isCollapsed}>
         {isSignedIn ? (
           <>
-            <AppSidebar user={session.user} />
+            <AppSidebar user={session!.user} />
             <SidebarInset>{children}</SidebarInset>
           </>
         ) : (

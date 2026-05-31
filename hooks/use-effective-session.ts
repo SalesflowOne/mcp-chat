@@ -1,35 +1,60 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useAuth, useUser } from '@clerk/nextjs';
+
 import { useAuthContext } from '@/components/session-provider';
 import { SESSION_DURATION_MS } from '@/lib/constants';
+import type { AppSession } from '@/lib/auth-session';
 
 /**
- * Hook that provides an "effective" session - either the real NextAuth session 
- * or a guest session when auth is disabled.
- * 
- * This abstraction allows components to use the same session interface regardless
- * of whether auth is enabled or disabled, making development easier while keeping
- * the same code paths for production.
- * 
- * @returns Session data compatible with NextAuth's useSession hook
+ * Session hook that mirrors the old NextAuth useSession shape so existing
+ * components keep working with Clerk underneath.
  */
 export function useEffectiveSession() {
-  const { data: session, status } = useSession();
   const { isAuthDisabled, guestSession } = useAuthContext();
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
 
-  // If auth is disabled, always return the guest session
   if (isAuthDisabled && guestSession) {
     return {
       data: {
         ...guestSession,
-        expires: new Date(Date.now() + SESSION_DURATION_MS).toISOString()
-      },
+        expires: new Date(Date.now() + SESSION_DURATION_MS).toISOString(),
+      } satisfies AppSession,
       status: 'authenticated' as const,
-      update: () => Promise.resolve(null)
+      update: () => Promise.resolve(null),
     };
   }
 
-  // Otherwise return the real session
-  return { data: session, status, update: () => Promise.resolve(null) };
+  if (!isLoaded) {
+    return {
+      data: null,
+      status: 'loading' as const,
+      update: () => Promise.resolve(null),
+    };
+  }
+
+  if (!isSignedIn || !user) {
+    return {
+      data: null,
+      status: 'unauthenticated' as const,
+      update: () => Promise.resolve(null),
+    };
+  }
+
+  return {
+    data: {
+      user: {
+        id: user.id,
+        name:
+          user.fullName ||
+          [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+          'User',
+        email: user.primaryEmailAddress?.emailAddress ?? '',
+      },
+      expires: new Date(Date.now() + SESSION_DURATION_MS).toISOString(),
+    } satisfies AppSession,
+    status: 'authenticated' as const,
+    update: () => Promise.resolve(null),
+  };
 }

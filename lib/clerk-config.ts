@@ -1,52 +1,39 @@
 /**
- * Clerk multi-domain (satellite) configuration for One OS / agentops.one.
+ * Clerk configuration for agentops.one (satellite domain on One OS instance).
  *
- * agentops.one is listed as a Clerk satellite, but the legacy primary
- * (sso.oneaccess.one) is not live. When no valid external primary is configured,
- * we host sign-in directly on agentops.one (standalone auth).
+ * Clerk Account Portal (primary sign-in):
+ *   https://accounts.agentops.one/sign-in
+ *
+ * Embedded <SignIn /> is blocked on satellite domains by Clerk.
  */
 
-const DEFAULT_SATELLITE_DOMAIN = 'agentops.one';
+export const DEFAULT_SATELLITE_DOMAIN = 'agentops.one';
 
-/** Broken / retired — do not redirect here */
-const RETIRED_PRIMARY_HOSTS = ['oneaccess.one', 'sso.oneaccess.one'];
+/** Clerk Account Portal — from instance display_config */
+export const CLERK_ACCOUNT_PORTAL_SIGN_IN_URL =
+  'https://accounts.agentops.one/sign-in';
 
-export function isClerkStandaloneAuth(): boolean {
-  if (process.env.NEXT_PUBLIC_CLERK_STANDALONE_AUTH === 'true') {
-    return true;
-  }
-  if (process.env.NEXT_PUBLIC_CLERK_STANDALONE_AUTH === 'false') {
-    return false;
-  }
-
-  const primarySignIn = process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL?.trim();
-  if (!primarySignIn?.startsWith('http')) {
-    return true;
-  }
-
-  try {
-    const host = new URL(primarySignIn).hostname;
-    if (RETIRED_PRIMARY_HOSTS.some((h) => host === h || host.endsWith(`.${h}`))) {
-      return true;
-    }
-    if (host === DEFAULT_SATELLITE_DOMAIN || host === `www.${DEFAULT_SATELLITE_DOMAIN}`) {
-      return true;
-    }
-  } catch {
-    return true;
-  }
-
-  return false;
-}
+export const CLERK_ACCOUNT_PORTAL_SIGN_UP_URL =
+  'https://accounts.agentops.one/sign-up';
 
 export function isClerkSatelliteApp(): boolean {
-  if (isClerkStandaloneAuth()) {
+  const flag = process.env.NEXT_PUBLIC_CLERK_IS_SATELLITE?.trim().toLowerCase();
+  if (flag === 'true') {
+    return true;
+  }
+  if (flag === 'false') {
     return false;
   }
-  return (
-    process.env.NEXT_PUBLIC_CLERK_IS_SATELLITE === 'true' ||
-    Boolean(process.env.NEXT_PUBLIC_CLERK_DOMAIN?.trim())
-  );
+  // agentops.one is a Clerk satellite — default on when sign-in is on Account Portal
+  const signInUrl = getClerkPrimarySignInUrl();
+  if (
+    signInUrl.startsWith('http') &&
+    !signInUrl.includes(getClerkSatelliteDomain())
+  ) {
+    return true;
+  }
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() ?? '';
+  return appUrl.includes(DEFAULT_SATELLITE_DOMAIN);
 }
 
 export function getClerkSatelliteDomain(): string {
@@ -55,20 +42,36 @@ export function getClerkSatelliteDomain(): string {
   );
 }
 
-export function getClerkPrimarySignInUrl(): string | undefined {
-  if (isClerkStandaloneAuth()) {
-    return undefined;
-  }
+export function getClerkPrimarySignInUrl(): string {
   const url = process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL?.trim();
-  return url?.startsWith('http') ? url : undefined;
+  if (url?.startsWith('http')) {
+    return url;
+  }
+  return CLERK_ACCOUNT_PORTAL_SIGN_IN_URL;
 }
 
-export function getClerkPrimarySignUpUrl(): string | undefined {
-  if (isClerkStandaloneAuth()) {
-    return undefined;
-  }
+export function getClerkPrimarySignUpUrl(): string {
   const url = process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL?.trim();
-  return url?.startsWith('http') ? url : undefined;
+  if (url?.startsWith('http')) {
+    return url;
+  }
+  return CLERK_ACCOUNT_PORTAL_SIGN_UP_URL;
+}
+
+export function buildSatelliteReturnUrl(path = '/'): string {
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    `https://${getClerkSatelliteDomain()}`;
+  return new URL(path, base.endsWith('/') ? base : `${base}/`).toString();
+}
+
+export function buildAccountPortalSignInUrl(returnPath = '/'): string {
+  const signIn = new URL(getClerkPrimarySignInUrl());
+  signIn.searchParams.set(
+    'redirect_url',
+    buildSatelliteReturnUrl(returnPath),
+  );
+  return signIn.toString();
 }
 
 export function getClerkMiddlewareOptions() {
@@ -76,14 +79,11 @@ export function getClerkMiddlewareOptions() {
     return undefined;
   }
 
-  const signInUrl = getClerkPrimarySignInUrl();
-  const signUpUrl = getClerkPrimarySignUpUrl();
-
   return {
     isSatellite: true,
     domain: getClerkSatelliteDomain(),
-    ...(signInUrl ? { signInUrl } : {}),
-    ...(signUpUrl ? { signUpUrl } : {}),
+    signInUrl: getClerkPrimarySignInUrl(),
+    signUpUrl: getClerkPrimarySignUpUrl(),
     satelliteAutoSync: false,
   };
 }

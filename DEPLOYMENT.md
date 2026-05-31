@@ -1,66 +1,26 @@
-# AgentOps / mcp-chat — Deployment
+## Clerk setup (agentops.one satellite)
 
-## Architecture
+`agentops.one` is a **Clerk satellite**. You cannot use embedded `<SignIn />` on this domain — Clerk returns *"not allowed on a satellite domain"*.
 
-- **Clerk** — authentication, organizations, sessions
-- **Supabase** — all tenant application data (`app_users`, `organizations`, `chat_threads`, etc.)
-- **Server-side access control** — Clerk validates identity; API routes use `SUPABASE_SERVICE_ROLE_KEY` only after membership checks
+**Sign-in URL (Account Portal):** `https://accounts.agentops.one/sign-in`
 
-## Required environment variables
+Flow:
 
-| Variable | Scope | Notes |
-|----------|-------|-------|
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Public | Clerk dashboard |
-| `CLERK_SECRET_KEY` | Server only | Clerk dashboard |
-| `NEXT_PUBLIC_SUPABASE_URL` | Public | Supabase project settings |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Supabase API keys |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server only | Never expose to browser |
-| `OPENAI_API_KEY` (or other AI keys) | Server | At least one provider |
-| `PIPEDREAM_*` | Server | MCP integrations |
-| `DISABLE_AUTH` | Server | `false` in production |
-| `DISABLE_PERSISTENCE` | Server | `false` when Supabase is configured |
+1. User visits `https://agentops.one/sign-in`
+2. App redirects to `https://accounts.agentops.one/sign-in?redirect_url=...`
+3. After auth, user returns to `https://agentops.one`
 
-## Supabase setup
+**Vercel env:**
 
-1. Create or use the same Supabase project as **agent-workspace**.
-2. Run the migration in `supabase/migrations/20260531130000_agentops_multitenant_foundation.sql` via Supabase SQL editor or CLI.
-3. Copy URL, anon key, and **service role** key into Vercel (`SUPABASE_SERVICE_ROLE_KEY`).
-   - On the shared **One OS** project, use migration `20260531140000_agentops_mcp_chat_tables.sql` (not the full foundation file if `organizations` already exists).
-   - `agent-workspace` may have empty `SUPABASE_SERVICE_ROLE_KEY` — paste the service role from **Supabase → Project Settings → API**.
-
-```bash
-# Optional local bootstrap for master admin after first sign-in
-npx tsx scripts/bootstrap-master-admin.ts
-```
-
-## Clerk setup (agentops.one)
-
-`agentops.one` is a **Clerk satellite domain** in the dashboard, but **`sso.oneaccess.one` is not live** (DNS does not resolve). This app therefore uses **standalone sign-in** on agentops itself.
-
-**Vercel env (agentops-mcp-chat):**
-
-- `NEXT_PUBLIC_CLERK_STANDALONE_AUTH=true`
+- `NEXT_PUBLIC_CLERK_IS_SATELLITE=true`
 - `NEXT_PUBLIC_CLERK_DOMAIN=agentops.one`
-- Do **not** set `NEXT_PUBLIC_CLERK_SIGN_IN_URL` to `sso.oneaccess.one` or `oneaccess.one`
-- `DISABLE_AUTH=false`
+- `NEXT_PUBLIC_CLERK_SIGN_IN_URL=https://accounts.agentops.one/sign-in`
+- `NEXT_PUBLIC_CLERK_SIGN_UP_URL=https://accounts.agentops.one/sign-up`
+- `NEXT_PUBLIC_APP_URL=https://agentops.one`
 
-Sign-in URL: `https://agentops.one/sign-in` (Clerk `<SignIn />` hosted here).
+**DNS (Clerk Dashboard → Domains):**
 
-If you later deploy a working primary One OS app, set `NEXT_PUBLIC_CLERK_STANDALONE_AUTH=false`, `NEXT_PUBLIC_CLERK_IS_SATELLITE=true`, and point `NEXT_PUBLIC_CLERK_SIGN_IN_URL` at that app's `/sign-in`.
+- Satellite `agentops.one` — Verified (you have this)
+- Account portal `accounts.agentops.one` — add the CNAME Clerk shows under **Account portal** / **Domains** if sign-in does not load
 
-## Master admin
-
-Email `ceo@salesflow.one` is promoted on every Clerk sync:
-
-- `role = master_admin`
-- `is_master_admin = true`
-
-Admin UI: `/admin` (master admin only, server-enforced).
-
-## Sync env from agent-workspace (Vercel)
-
-```bash
-VERCEL_TOKEN=... node scripts/sync-vercel-env.mjs
-```
-
-The sync script copies Supabase keys (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) from `agent-workspace` when present.
+Do **not** use `sso.oneaccess.one` (no DNS).

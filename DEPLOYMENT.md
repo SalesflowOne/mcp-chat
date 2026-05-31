@@ -34,3 +34,24 @@ In **Clerk Dashboard → Configure → Domains → Account portal**, verify `acc
 **Already working:** `clerk.agentops.one` (satellite Frontend API), `accounts.oneaccess.one` (Account Portal, same One OS instance).
 
 Do **not** use `sso.oneaccess.one` or apex `oneaccess.one` (no DNS).
+
+### Fix redirect to dead `oneaccess.one` after sign-in
+
+Clerk Dashboard still has **Home URL** and **After sign-in URL** set to `https://oneaccess.one` (no DNS). That is **not** in this repo — it is instance config from Clerk.
+
+**Required (Clerk Dashboard → Configure → Paths / Account Portal):**
+
+| Setting | Set to |
+|---------|--------|
+| Home URL | `https://agentops.one` |
+| After sign-in URL | `https://agentops.one` |
+| After sign-up URL | `https://agentops.one` |
+| Allowed redirect URLs | `https://agentops.one` |
+
+**Vercel env (set by sync script):**
+
+- `NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL=https://agentops.one/`
+- `NEXT_PUBLIC_CLERK_SIGN_UP_FORCE_REDIRECT_URL=https://agentops.one/`
+- `NEXT_PUBLIC_APP_URL=https://agentops.one`
+
+Until the dashboard URLs are updated, users may still land on `oneaccess.one` after Account Portal sign-in if Clerk ignores `redirect_url`.

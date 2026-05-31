@@ -15,6 +15,8 @@ const isPublicRoute = createRouteMatcher([
   '/twitter-image(.*)',
 ]);
 
+const isAdminRoute = createRouteMatcher(['/admin(.*)']);
+
 const isProtectedApiRoute = createRouteMatcher(['/api/chat(.*)']);
 
 const clerkHandler = clerkMiddleware(async (auth, request) => {
@@ -22,7 +24,7 @@ const clerkHandler = clerkMiddleware(async (auth, request) => {
     return;
   }
 
-  if (isProtectedApiRoute(request)) {
+  if (isProtectedApiRoute(request) || isAdminRoute(request)) {
     await auth.protect();
   }
 });

@@ -5,7 +5,7 @@ export const isProductionEnvironment = process.env.NODE_ENV === "production";
 export const isAuthDisabled = process.env.DISABLE_AUTH === "true";
 
 // Database persistence is disabled when DISABLE_PERSISTENCE is explicitly set to 'true'
-// This allows testing without setting up Supabase/PostgreSQL database
+// When Supabase is configured, set DISABLE_PERSISTENCE=false for chat history
 export const isPersistenceDisabled = process.env.DISABLE_PERSISTENCE === "true";
 
 // Session duration for guest sessions (24 hours in milliseconds)

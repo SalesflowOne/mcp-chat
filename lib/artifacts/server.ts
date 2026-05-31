@@ -51,13 +51,14 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
         session: args.session,
       });
 
-      if (args.session?.user?.id) {
+      const appUserId = (args.session as { appUserId?: string })?.appUserId;
+      if (appUserId) {
         await saveDocument({
           id: args.id,
           title: args.title,
           content: draftContent,
           kind: config.kind,
-          userId: args.session.user.id,
+          userId: appUserId,
         });
       }
 
@@ -71,13 +72,14 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
         session: args.session,
       });
 
-      if (args.session?.user?.id) {
+      const appUserId = (args.session as { appUserId?: string })?.appUserId;
+      if (appUserId) {
         await saveDocument({
           id: args.document.id,
           title: args.document.title,
           content: draftContent,
           kind: config.kind,
-          userId: args.session.user.id,
+          userId: appUserId,
         });
       }
 

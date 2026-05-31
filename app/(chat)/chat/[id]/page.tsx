@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 
-import { auth } from '@/app/(auth)/auth';
 import { Chat } from '@/components/chat';
 import { getChatById, getMessagesByChatId } from '@/lib/db/queries';
 import { DataStreamHandler } from '@/components/data-stream-handler';
@@ -24,7 +23,11 @@ export async function generateMetadata(
     return BASE_METADATA;
   }
 
-  const chat = await getChatById({ id });
+  const session = await getEffectiveSession();
+  const chat = await getChatById({
+    id,
+    clerkUserId: session?.clerkUserId,
+  });
 
   if (!chat) {
     // When chat is not found, fall back to the default metadata
@@ -32,7 +35,10 @@ export async function generateMetadata(
   }
 
   // Find the first user message to use as description
-  const messages = await getMessagesByChatId({ id });
+  const messages = await getMessagesByChatId({
+    id,
+    clerkUserId: session?.clerkUserId,
+  });
   const firstUserMessage = messages.find(msg => msg.role === 'user');
   const description = firstUserMessage 
     ? (firstUserMessage.parts.find(part => part.type === 'text')?.text || BASE_TITLE)
@@ -116,26 +122,30 @@ async function ChatPage({ params }: { params: Promise<{ id: string }> }) {
     );
   }
 
-  const chat = await getChatById({ id });
+  const session = await getEffectiveSession();
+
+  const chat = await getChatById({
+    id,
+    clerkUserId: session?.clerkUserId,
+  });
 
   if (!chat) {
     notFound();
   }
-
-  const session = await getEffectiveSession();
 
   if (chat.visibility === 'private') {
     if (!session || !session.user) {
       return notFound();
     }
 
-    if (session.user.id !== chat.userId) {
+    if (session.appUserId !== chat.userId) {
       return notFound();
     }
   }
 
   const messagesFromDb = await getMessagesByChatId({
     id,
+    clerkUserId: session?.clerkUserId,
   });
 
   function convertToUIMessages(messages: Array<DBMessage>): Array<UIMessage> {
@@ -170,7 +180,7 @@ async function ChatPage({ params }: { params: Promise<{ id: string }> }) {
           initialMessages={convertToUIMessages(messagesFromDb)}
           selectedChatModel={DEFAULT_CHAT_MODEL}
           selectedVisibilityType={chat.visibility}
-          isReadonly={session?.user?.id !== chat.userId}
+          isReadonly={session?.appUserId !== chat.userId}
           hasAPIKeys={hasAPIKeys}
         />
         <DataStreamHandler id={id} />
@@ -185,7 +195,7 @@ async function ChatPage({ params }: { params: Promise<{ id: string }> }) {
         initialMessages={convertToUIMessages(messagesFromDb)}
         selectedChatModel={chatModelFromCookie.value}
         selectedVisibilityType={chat.visibility}
-        isReadonly={session?.user?.id !== chat.userId}
+        isReadonly={session?.appUserId !== chat.userId}
         hasAPIKeys={hasAPIKeys}
       />
       <DataStreamHandler id={id} />

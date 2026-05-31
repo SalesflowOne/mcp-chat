@@ -67,7 +67,9 @@ export async function POST(request: Request) {
       })
     }
 
-    const userId = session.user.id
+    const clerkUserId = session.clerkUserId
+    const appUserId = session.appUserId
+    const organizationId = session.organizationId
 
     const userMessage = getMostRecentUserMessage(messages)
 
@@ -77,16 +79,21 @@ export async function POST(request: Request) {
 
     // Only check/save chat and messages if persistence is enabled
     if (shouldPersistData()) {
-      const chat = await getChatById({ id })
+      const chat = await getChatById({ id, clerkUserId })
 
       if (!chat) {
         const title = await generateTitleFromUserMessage({
           message: userMessage,
         })
 
-        await saveChat({ id, userId, title })
+        await saveChat({
+          id,
+          userId: appUserId,
+          title,
+          organizationId,
+        })
       } else {
-        if (chat.userId !== userId) {
+        if (chat.userId !== appUserId) {
           return new Response("Unauthorized", { status: 401 })
         }
       }
@@ -102,11 +109,13 @@ export async function POST(request: Request) {
             createdAt: new Date(),
           },
         ],
+        organizationId,
+        appUserId,
       })
     }
 
     // MCP server is stateless - state is restored via chatId header, no session IDs needed
-    const mcpSession = new MCPSessionManager(MCP_BASE_URL, userId, id)
+    const mcpSession = new MCPSessionManager(MCP_BASE_URL, clerkUserId, id)
 
     return createDataStreamResponse({
       execute: async (dataStream) => {
@@ -121,8 +130,8 @@ export async function POST(request: Request) {
             experimental_transform: smoothStream({ chunking: "word" }),
             experimental_generateMessageId: generateUUID,
             getTools: () => mcpSession.tools({ useCache: false }),
-            onFinish: async ({ response }) => {
-              if (userId && shouldPersistData()) {
+            onFinish: async ({ response, usage }) => {
+              if (appUserId && shouldPersistData()) {
                 try {
                   const assistantId = getTrailingMessageId({
                     messages: response.messages.filter(
@@ -151,7 +160,24 @@ export async function POST(request: Request) {
                         createdAt: new Date(),
                       },
                     ],
+                    organizationId,
+                    appUserId,
                   })
+
+                  if (organizationId) {
+                    const { recordUsageEvent } = await import(
+                      '@/lib/data/chat-supabase'
+                    )
+                    await recordUsageEvent({
+                      organizationId,
+                      userId: appUserId,
+                      eventType: 'chat.completion',
+                      model: selectedChatModel,
+                      inputTokens: usage?.promptTokens ?? 0,
+                      outputTokens: usage?.completionTokens ?? 0,
+                      metadata: { chatId: id },
+                    })
+                  }
                 } catch (error) {
                   console.error("Failed to save chat")
                 }
@@ -190,7 +216,8 @@ export async function DELETE(request: Request) {
     return new Response("Unauthorized", { status: 401 })
   }
   
-  const userId = session.user.id
+  const appUserId = session.appUserId
+  const clerkUserId = session.clerkUserId
 
   // In dev mode without auth, just return success without deleting
   if (!shouldPersistData()) {
@@ -198,13 +225,13 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const chat = await getChatById({ id })
+    const chat = await getChatById({ id, clerkUserId })
 
-    if (chat.userId !== userId) {
+    if (chat.userId !== appUserId) {
       return new Response("Unauthorized", { status: 401 })
     }
 
-    await deleteChatById({ id })
+    await deleteChatById({ id, clerkUserId })
 
     return new Response("Chat deleted", { status: 200 })
   } catch (error) {

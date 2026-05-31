@@ -2,35 +2,83 @@ import 'server-only';
 
 import { auth, currentUser } from '@clerk/nextjs/server';
 
-import { isAuthDisabled, isPersistenceDisabled } from '@/lib/constants';
+import { isAuthDisabled } from '@/lib/constants';
 import type { AppSession } from '@/lib/auth-session';
 import { createGuestSession } from '@/lib/utils';
+import { shouldPersistData as resolveShouldPersist } from '@/lib/data/persistence';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { resolveTenantContext } from '@/lib/tenant/context';
 
 export async function getEffectiveSession(): Promise<AppSession | null> {
   if (isAuthDisabled) {
-    return createGuestSession();
+    const guest = createGuestSession();
+    return {
+      ...guest,
+      clerkUserId: guest.user.id,
+      appUserId: guest.user.id,
+      organizationId: 'guest',
+    };
   }
 
-  const { userId } = await auth();
+  const { userId: clerkUserId } = await auth();
 
-  if (!userId) {
+  if (!clerkUserId) {
     return null;
   }
 
-  const user = await currentUser();
+  const clerkProfile = await currentUser();
+  const email =
+    clerkProfile?.emailAddresses.find(
+      (e) => e.id === clerkProfile.primaryEmailAddressId,
+    )?.emailAddress ??
+    clerkProfile?.emailAddresses[0]?.emailAddress ??
+    '';
+
+  if (isSupabaseConfigured()) {
+    try {
+      const tenant = await resolveTenantContext();
+      if (!tenant) {
+        return null;
+      }
+
+      return {
+        user: {
+          id: tenant.clerkUserId,
+          name:
+            tenant.appUser.full_name ||
+            [clerkProfile?.firstName, clerkProfile?.lastName]
+              .filter(Boolean)
+              .join(' ') ||
+            'User',
+          email: tenant.appUser.email,
+        },
+        clerkUserId: tenant.clerkUserId,
+        appUserId: tenant.appUser.id,
+        organizationId: tenant.organizationId,
+        isMasterAdmin: tenant.appUser.is_master_admin,
+      };
+    } catch (error) {
+      console.error('Failed to resolve Supabase tenant context', error);
+    }
+  }
 
   return {
     user: {
-      id: userId,
+      id: clerkUserId,
       name:
-        user?.fullName ||
-        [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+        clerkProfile?.fullName ||
+        [clerkProfile?.firstName, clerkProfile?.lastName]
+          .filter(Boolean)
+          .join(' ') ||
         'User',
-      email: user?.emailAddresses[0]?.emailAddress ?? '',
+      email,
     },
+    clerkUserId,
+    appUserId: clerkUserId,
+    organizationId: 'default',
   };
 }
 
 export function shouldPersistData() {
-  return !isPersistenceDisabled;
+  return resolveShouldPersist();
 }

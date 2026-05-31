@@ -17,18 +17,41 @@ import {
   type DBMessage,
 } from './schema';
 import { ArtifactKind } from '@/components/artifact';
+import { useSupabasePersistence } from '@/lib/data/persistence';
+import {
+  deleteChatByIdSupabase,
+  getChatByIdSupabase,
+  getChatsByUserIdSupabase,
+  getMessagesByChatIdSupabase,
+  getVotesByChatIdSupabase,
+  saveChatSupabase,
+  saveMessagesSupabase,
+  updateChatVisibilitySupabase,
+  voteMessageSupabase,
+} from '@/lib/data/chat-supabase';
+import { resolveTenantContext } from '@/lib/tenant/context';
 
-// Optionally, if not using email/pass login, you can
-// use the Drizzle adapter for Auth.js / NextAuth
-// https://authjs.dev/reference/adapter/drizzle
+let drizzleDb: ReturnType<typeof drizzle> | null = null;
 
-// biome-ignore lint: Forbidden non-null assertion.
-const client = postgres(process.env.POSTGRES_URL!);
-export const db = drizzle(client);
+function getDrizzleDb() {
+  const url = process.env.POSTGRES_URL?.trim();
+  if (!url) {
+    throw new Error('POSTGRES_URL is not configured');
+  }
+  if (!drizzleDb) {
+    drizzleDb = drizzle(postgres(url));
+  }
+  return drizzleDb;
+}
+
+/** @deprecated Legacy Drizzle export — only when POSTGRES_URL is set */
+export function getDb() {
+  return getDrizzleDb();
+}
 
 export async function getUser(email: string): Promise<Array<User>> {
   try {
-    return await db.select().from(user).where(eq(user.email, email));
+    return await getDrizzleDb().select().from(user).where(eq(user.email, email));
   } catch (error) {
     console.error('Failed to get user from database');
     throw error;
@@ -40,7 +63,7 @@ export async function createUser(email: string, password: string) {
   const hash = hashSync(password, salt);
 
   try {
-    return await db.insert(user).values({ email, password: hash });
+    return await getDrizzleDb().insert(user).values({ email, password: hash });
   } catch (error) {
     console.error('Failed to create user in database');
     throw error;
@@ -51,13 +74,29 @@ export async function saveChat({
   id,
   userId,
   title,
+  organizationId,
 }: {
   id: string;
   userId: string;
   title: string;
+  organizationId?: string;
 }) {
+  if (useSupabasePersistence()) {
+    const tenant = await resolveTenantContext();
+    if (!tenant) {
+      throw new Error('Unauthorized');
+    }
+    return saveChatSupabase({
+      id,
+      clerkUserId: tenant.clerkUserId,
+      appUserId: tenant.appUser.id,
+      organizationId: organizationId ?? tenant.organizationId,
+      title,
+    });
+  }
+
   try {
-    return await db.insert(chat).values({
+    return await getDrizzleDb().insert(chat).values({
       id,
       createdAt: new Date(),
       userId,
@@ -69,21 +108,56 @@ export async function saveChat({
   }
 }
 
-export async function deleteChatById({ id }: { id: string }) {
-  try {
-    await db.delete(vote).where(eq(vote.chatId, id));
-    await db.delete(message).where(eq(message.chatId, id));
+export async function deleteChatById({
+  id,
+  clerkUserId,
+}: {
+  id: string;
+  clerkUserId?: string;
+}) {
+  if (useSupabasePersistence()) {
+    const tenant = await resolveTenantContext();
+    if (!tenant) {
+      throw new Error('Unauthorized');
+    }
+    return deleteChatByIdSupabase({
+      id,
+      clerkUserId: clerkUserId ?? tenant.clerkUserId,
+    });
+  }
 
-    return await db.delete(chat).where(eq(chat.id, id));
+  try {
+    const dbx = getDrizzleDb();
+    await dbx.delete(vote).where(eq(vote.chatId, id));
+    await dbx.delete(message).where(eq(message.chatId, id));
+
+    return await dbx.delete(chat).where(eq(chat.id, id));
   } catch (error) {
     console.error('Failed to delete chat by id from database');
     throw error;
   }
 }
 
-export async function getChatsByUserId({ id }: { id: string }) {
+export async function getChatsByUserId({
+  id,
+  organizationId,
+}: {
+  id: string;
+  organizationId?: string;
+}) {
+  if (useSupabasePersistence()) {
+    const tenant = await resolveTenantContext();
+    if (!tenant) {
+      return [];
+    }
+    return getChatsByUserIdSupabase({
+      appUserId: id,
+      organizationId: organizationId ?? tenant.organizationId,
+    });
+  }
+
   try {
-    return await db
+    return await getDrizzleDb()
       .select()
       .from(chat)
       .where(eq(chat.userId, id))
@@ -94,9 +168,29 @@ export async function getChatsByUserId({ id }: { id: string }) {
   }
 }
 
-export async function getChatById({ id }: { id: string }) {
+export async function getChatById({
+  id,
+  clerkUserId,
+}: {
+  id: string;
+  clerkUserId?: string;
+}) {
+  if (useSupabasePersistence()) {
+    const tenant = await resolveTenantContext();
+    if (!tenant) {
+      return null;
+    }
+    return getChatByIdSupabase({
+      id,
+      clerkUserId: clerkUserId ?? tenant.clerkUserId,
+    });
+  }
+
   try {
-    const [selectedChat] = await db.select().from(chat).where(eq(chat.id, id));
+    const [selectedChat] = await getDrizzleDb()
+      .select()
+      .from(chat)
+      .where(eq(chat.id, id));
     return selectedChat;
   } catch (error) {
     console.error('Failed to get chat by id from database');
@@ -106,20 +200,60 @@ export async function getChatById({ id }: { id: string }) {
 
 export async function saveMessages({
   messages,
+  organizationId,
+  appUserId,
 }: {
   messages: Array<DBMessage>;
+  organizationId?: string;
+  appUserId?: string;
 }) {
+  if (useSupabasePersistence()) {
+    const tenant = await resolveTenantContext();
+    if (!tenant) {
+      throw new Error('Unauthorized');
+    }
+    return saveMessagesSupabase({
+      messages: messages.map((m) => ({
+        id: m.id,
+        chatId: m.chatId,
+        role: m.role,
+        parts: m.parts,
+        attachments: m.attachments,
+        createdAt: m.createdAt,
+      })),
+      organizationId: organizationId ?? tenant.organizationId,
+      appUserId: appUserId ?? tenant.appUser.id,
+    });
+  }
+
   try {
-    return await db.insert(message).values(messages);
+    return await getDrizzleDb().insert(message).values(messages);
   } catch (error) {
     console.error('Failed to save messages in database', error);
     throw error;
   }
 }
 
-export async function getMessagesByChatId({ id }: { id: string }) {
+export async function getMessagesByChatId({
+  id,
+  clerkUserId,
+}: {
+  id: string;
+  clerkUserId?: string;
+}) {
+  if (useSupabasePersistence()) {
+    const tenant = await resolveTenantContext();
+    if (!tenant) {
+      return [];
+    }
+    return getMessagesByChatIdSupabase({
+      id,
+      clerkUserId: clerkUserId ?? tenant.clerkUserId,
+    });
+  }
+
   try {
-    return await db
+    return await getDrizzleDb()
       .select()
       .from(message)
       .where(eq(message.chatId, id))
@@ -139,19 +273,23 @@ export async function voteMessage({
   messageId: string;
   type: 'up' | 'down';
 }) {
+  if (useSupabasePersistence()) {
+    return voteMessageSupabase();
+  }
+
   try {
-    const [existingVote] = await db
+    const [existingVote] = await getDrizzleDb()
       .select()
       .from(vote)
       .where(and(eq(vote.messageId, messageId)));
 
     if (existingVote) {
-      return await db
+      return await getDrizzleDb()
         .update(vote)
         .set({ isUpvoted: type === 'up' })
         .where(and(eq(vote.messageId, messageId), eq(vote.chatId, chatId)));
     }
-    return await db.insert(vote).values({
+    return await getDrizzleDb().insert(vote).values({
       chatId,
       messageId,
       isUpvoted: type === 'up',
@@ -163,8 +301,12 @@ export async function voteMessage({
 }
 
 export async function getVotesByChatId({ id }: { id: string }) {
+  if (useSupabasePersistence()) {
+    return getVotesByChatIdSupabase();
+  }
+
   try {
-    return await db.select().from(vote).where(eq(vote.chatId, id));
+    return await getDrizzleDb().select().from(vote).where(eq(vote.chatId, id));
   } catch (error) {
     console.error('Failed to get votes by chat id from database', error);
     throw error;
@@ -185,7 +327,7 @@ export async function saveDocument({
   userId: string;
 }) {
   try {
-    return await db.insert(document).values({
+    return await getDrizzleDb().insert(document).values({
       id,
       title,
       kind,
@@ -201,7 +343,7 @@ export async function saveDocument({
 
 export async function getDocumentsById({ id }: { id: string }) {
   try {
-    const documents = await db
+    const documents = await getDrizzleDb()
       .select()
       .from(document)
       .where(eq(document.id, id))
@@ -216,7 +358,7 @@ export async function getDocumentsById({ id }: { id: string }) {
 
 export async function getDocumentById({ id }: { id: string }) {
   try {
-    const [selectedDocument] = await db
+    const [selectedDocument] = await getDrizzleDb()
       .select()
       .from(document)
       .where(eq(document.id, id))
@@ -237,7 +379,7 @@ export async function deleteDocumentsByIdAfterTimestamp({
   timestamp: Date;
 }) {
   try {
-    await db
+    await getDrizzleDb()
       .delete(suggestion)
       .where(
         and(
@@ -246,7 +388,7 @@ export async function deleteDocumentsByIdAfterTimestamp({
         ),
       );
 
-    return await db
+    return await getDrizzleDb()
       .delete(document)
       .where(and(eq(document.id, id), gt(document.createdAt, timestamp)));
   } catch (error) {
@@ -263,7 +405,7 @@ export async function saveSuggestions({
   suggestions: Array<Suggestion>;
 }) {
   try {
-    return await db.insert(suggestion).values(suggestions);
+    return await getDrizzleDb().insert(suggestion).values(suggestions);
   } catch (error) {
     console.error('Failed to save suggestions in database');
     throw error;
@@ -276,7 +418,7 @@ export async function getSuggestionsByDocumentId({
   documentId: string;
 }) {
   try {
-    return await db
+    return await getDrizzleDb()
       .select()
       .from(suggestion)
       .where(and(eq(suggestion.documentId, documentId)));
@@ -290,7 +432,7 @@ export async function getSuggestionsByDocumentId({
 
 export async function getMessageById({ id }: { id: string }) {
   try {
-    return await db.select().from(message).where(eq(message.id, id));
+    return await getDrizzleDb().select().from(message).where(eq(message.id, id));
   } catch (error) {
     console.error('Failed to get message by id from database');
     throw error;
@@ -305,7 +447,7 @@ export async function deleteMessagesByChatIdAfterTimestamp({
   timestamp: Date;
 }) {
   try {
-    const messagesToDelete = await db
+    const messagesToDelete = await getDrizzleDb()
       .select({ id: message.id })
       .from(message)
       .where(
@@ -315,13 +457,13 @@ export async function deleteMessagesByChatIdAfterTimestamp({
     const messageIds = messagesToDelete.map((message) => message.id);
 
     if (messageIds.length > 0) {
-      await db
+      await getDrizzleDb()
         .delete(vote)
         .where(
           and(eq(vote.chatId, chatId), inArray(vote.messageId, messageIds)),
         );
 
-      return await db
+      return await getDrizzleDb()
         .delete(message)
         .where(
           and(eq(message.chatId, chatId), inArray(message.id, messageIds)),
@@ -338,12 +480,29 @@ export async function deleteMessagesByChatIdAfterTimestamp({
 export async function updateChatVisiblityById({
   chatId,
   visibility,
+  clerkUserId,
 }: {
   chatId: string;
   visibility: 'private' | 'public';
+  clerkUserId?: string;
 }) {
+  if (useSupabasePersistence()) {
+    const tenant = await resolveTenantContext();
+    if (!tenant) {
+      throw new Error('Unauthorized');
+    }
+    return updateChatVisibilitySupabase({
+      chatId,
+      visibility,
+      clerkUserId: clerkUserId ?? tenant.clerkUserId,
+    });
+  }
+
   try {
-    return await db.update(chat).set({ visibility }).where(eq(chat.id, chatId));
+    return await getDrizzleDb()
+      .update(chat)
+      .set({ visibility })
+      .where(eq(chat.id, chatId));
   } catch (error) {
     console.error('Failed to update chat visibility in database');
     throw error;

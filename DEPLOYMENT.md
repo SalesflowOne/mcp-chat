@@ -24,7 +24,9 @@
 
 1. Create or use the same Supabase project as **agent-workspace**.
 2. Run the migration in `supabase/migrations/20260531130000_agentops_multitenant_foundation.sql` via Supabase SQL editor or CLI.
-3. Copy URL, anon key, and service role key into Vercel.
+3. Copy URL, anon key, and **service role** key into Vercel (`SUPABASE_SERVICE_ROLE_KEY`).
+   - On the shared **One OS** project, use migration `20260531140000_agentops_mcp_chat_tables.sql` (not the full foundation file if `organizations` already exists).
+   - `agent-workspace` may have empty `SUPABASE_SERVICE_ROLE_KEY` — paste the service role from **Supabase → Project Settings → API**.
 
 ```bash
 # Optional local bootstrap for master admin after first sign-in

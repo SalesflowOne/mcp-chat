@@ -4,14 +4,15 @@ import { SignIn, useAuth, useClerk } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { isClerkSatelliteApp } from '@/lib/clerk-config';
+import { isClerkSatelliteApp, isClerkStandaloneAuth } from '@/lib/clerk-config';
 
 export function ClerkSignInView() {
   const { isLoaded, isSignedIn } = useAuth();
   const clerk = useClerk();
   const router = useRouter();
   const isSatellite = isClerkSatelliteApp();
-  const [redirecting, setRedirecting] = useState(isSatellite);
+  const isStandalone = isClerkStandaloneAuth();
+  const [redirecting, setRedirecting] = useState(isSatellite && !isStandalone);
 
   useEffect(() => {
     if (!isLoaded) {
@@ -23,7 +24,7 @@ export function ClerkSignInView() {
       return;
     }
 
-    if (!isSatellite) {
+    if (isStandalone || !isSatellite) {
       setRedirecting(false);
       return;
     }
@@ -41,23 +42,15 @@ export function ClerkSignInView() {
       console.error('Failed to build Clerk sign-in URL', error);
       setRedirecting(false);
     }
-  }, [isLoaded, isSignedIn, isSatellite, clerk, clerk.loaded, router]);
+  }, [isLoaded, isSignedIn, isSatellite, isStandalone, clerk, clerk.loaded, router]);
 
   if (!isLoaded || redirecting) {
     return (
-      <div className="flex flex-col items-center gap-3 text-center max-w-md">
+      <div className="flex max-w-md flex-col items-center gap-3 text-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground border-t-foreground" />
         <p className="text-sm text-muted-foreground">
-          {isSatellite
-            ? 'Redirecting to One OS sign in…'
-            : 'Loading sign in…'}
+          {redirecting ? 'Redirecting to sign in…' : 'Loading sign in…'}
         </p>
-        {isSatellite ? (
-          <p className="text-xs text-muted-foreground">
-            agentops.one uses shared One OS authentication. You will return here
-            after signing in.
-          </p>
-        ) : null}
       </div>
     );
   }

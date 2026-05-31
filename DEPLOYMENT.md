@@ -33,23 +33,20 @@
 npx tsx scripts/bootstrap-master-admin.ts
 ```
 
-## Clerk setup (satellite domain)
+## Clerk setup (agentops.one)
 
-`agentops.one` is a **Clerk satellite** (not the primary). Sign-in runs on the primary app.
+`agentops.one` is a **Clerk satellite domain** in the dashboard, but **`sso.oneaccess.one` is not live** (DNS does not resolve). This app therefore uses **standalone sign-in** on agentops itself.
 
-1. **Satellite (this app — agentops-mcp-chat)** env:
-   - `NEXT_PUBLIC_CLERK_IS_SATELLITE=true`
-   - `NEXT_PUBLIC_CLERK_DOMAIN=agentops.one`
-   - `NEXT_PUBLIC_CLERK_SIGN_IN_URL=https://sso.oneaccess.one/sign-in` (primary)
-   - `NEXT_PUBLIC_CLERK_SIGN_UP_URL=https://sso.oneaccess.one/sign-up` (primary)
+**Vercel env (agentops-mcp-chat):**
 
-2. **Primary app** (e.g. `one-access` / `sso.oneaccess.one`): add `https://agentops.one` to ClerkProvider `allowedRedirectOrigins`.
+- `NEXT_PUBLIC_CLERK_STANDALONE_AUTH=true`
+- `NEXT_PUBLIC_CLERK_DOMAIN=agentops.one`
+- Do **not** set `NEXT_PUBLIC_CLERK_SIGN_IN_URL` to `sso.oneaccess.one` or `oneaccess.one`
+- `DISABLE_AUTH=false`
 
-3. Clerk Dashboard → Satellites → `agentops.one` must show **Verified** (you already have this).
+Sign-in URL: `https://agentops.one/sign-in` (Clerk `<SignIn />` hosted here).
 
-4. Set `DISABLE_AUTH=false` on Vercel and redeploy.
-
-Visiting `https://agentops.one/sign-in` redirects to the primary sign-in URL; you return to agentops after auth.
+If you later deploy a working primary One OS app, set `NEXT_PUBLIC_CLERK_STANDALONE_AUTH=false`, `NEXT_PUBLIC_CLERK_IS_SATELLITE=true`, and point `NEXT_PUBLIC_CLERK_SIGN_IN_URL` at that app's `/sign-in`.
 
 ## Master admin
 

@@ -113,6 +113,18 @@ for (const key of KEYS_TO_COPY) {
     console.warn(`Skip ${key}: not found on source project`);
     continue;
   }
+  if (key === 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY' && !value.startsWith('pk_')) {
+    console.warn(`Skip ${key}: invalid format (expected pk_*)`);
+    continue;
+  }
+  if (key === 'CLERK_SECRET_KEY' && !value.startsWith('sk_')) {
+    console.warn(`Skip ${key}: invalid format (expected sk_*)`);
+    continue;
+  }
+  if (key === 'NEXT_PUBLIC_SUPABASE_URL' && !value.startsWith('https://')) {
+    console.warn(`Skip ${key}: invalid URL`);
+    continue;
+  }
   if (copied.has(key)) continue;
   copied.add(key);
   await upsertEnv(TARGET_PROJECT, key, value);

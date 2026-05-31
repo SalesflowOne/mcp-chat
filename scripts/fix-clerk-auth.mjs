@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Clerk fixes for agentops.one satellite — no oneaccess.one redirects.
+ * Clerk fixes for agentops.one satellite auth.
  * Requires CLERK_SECRET_KEY.
  */
 const secret = process.env.CLERK_SECRET_KEY?.trim();
@@ -13,6 +13,7 @@ const AGENTOPS_SATELLITE_DOMAIN_ID = 'dmn_3ET5dadhn3yLUlfoD75rlV1SOH8';
 const ALLOWED_ORIGINS = [
   'https://agentops.one',
   'https://www.agentops.one',
+  'https://accounts.oneaccess.one',
   'https://accounts.agentops.one',
 ];
 const PROXY_URL = 'https://agentops.one/__clerk';
@@ -37,7 +38,7 @@ async function clerkFetch(path, init = {}) {
 }
 
 async function main() {
-  console.log('Patching allowed_redirect_origins (agentops only)…');
+  console.log('Patching allowed_redirect_origins…');
   const instance = await clerkFetch('/instance', {
     method: 'PATCH',
     body: JSON.stringify({ allowed_redirect_origins: ALLOWED_ORIGINS }),
@@ -54,10 +55,17 @@ async function main() {
     domain.body?.errors ?? '',
   );
 
-  console.log('\nClerk Dashboard → Configure → Paths (stop redirects to dead oneaccess.one):');
-  console.log('  Home / After sign-in / After sign-up / Logo link → https://agentops.one');
-  console.log('\nCloudflare DNS for agentops.one (required for sign-in UI):');
-  console.log('  CNAME accounts → accounts.clerk.services');
+  const envRes = await fetch('https://clerk.oneaccess.one/v1/environment');
+  if (envRes.ok) {
+    const env = await envRes.json();
+    const dc = env.display_config;
+    console.log('\nClerk instance paths (update in Dashboard if still wrong):');
+    console.log('  home_url:', dc.home_url);
+    console.log('  after_sign_in_url:', dc.after_sign_in_url);
+  }
+
+  console.log('\nDashboard → Configure → Paths: set all to https://agentops.one');
+  console.log('Dashboard → Domains → agentops.one: verify accounts CNAME for accounts.agentops.one');
 }
 
 main().catch((err) => {

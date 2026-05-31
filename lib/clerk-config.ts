@@ -1,8 +1,9 @@
 /**
  * Clerk configuration for agentops.one (satellite on the shared One OS Clerk instance).
  *
- * Sign-in uses the Account Portal on accounts.agentops.one (never apex oneaccess.one).
- * Embedded <SignIn /> is blocked on satellite domains by Clerk.
+ * Sign-in uses the shared Account Portal host (accounts.oneaccess.one) until Clerk
+ * provisions accounts.agentops.one on their edge. Users always return to agentops.one
+ * via redirect_url + sign_in_force_redirect_url — never apex oneaccess.one.
  */
 
 export const DEFAULT_SATELLITE_DOMAIN = 'agentops.one';
@@ -11,14 +12,23 @@ export const DEFAULT_APP_ORIGIN = 'https://agentops.one';
 
 export const CLERK_FAPI_PROXY_PATH = '/__clerk';
 
-/** Account Portal on the agentops satellite domain (CNAME → accounts.clerk.services). */
-export const CLERK_ACCOUNT_PORTAL_SIGN_IN_URL =
+/**
+ * Shared One OS Account Portal (Clerk-provisioned — works on Clerk/Cloudflare edge).
+ * This is accounts.oneaccess.one, not the dead apex oneaccess.one.
+ */
+export const CLERK_SHARED_ACCOUNT_PORTAL_SIGN_IN_URL =
+  'https://accounts.oneaccess.one/sign-in';
+
+export const CLERK_SHARED_ACCOUNT_PORTAL_SIGN_UP_URL =
+  'https://accounts.oneaccess.one/sign-up';
+
+/** Future: when Clerk Dashboard provisions accounts.agentops.one on their edge. */
+export const CLERK_ACCOUNT_PORTAL_AGENTOPS_SIGN_IN_URL =
   'https://accounts.agentops.one/sign-in';
 
-export const CLERK_ACCOUNT_PORTAL_SIGN_UP_URL =
+export const CLERK_ACCOUNT_PORTAL_AGENTOPS_SIGN_UP_URL =
   'https://accounts.agentops.one/sign-up';
 
-/** Satellite sign-in routes — not the Account Portal (avoids oneaccess.* in ClerkProvider). */
 export const CLERK_SATELLITE_SIGN_IN_PATH = '/sign-in';
 export const CLERK_SATELLITE_SIGN_UP_PATH = '/sign-up';
 
@@ -49,7 +59,7 @@ export function getClerkPrimarySignInUrl(): string {
   if (url?.startsWith('http')) {
     return url;
   }
-  return CLERK_ACCOUNT_PORTAL_SIGN_IN_URL;
+  return CLERK_SHARED_ACCOUNT_PORTAL_SIGN_IN_URL;
 }
 
 export function getClerkPrimarySignUpUrl(): string {
@@ -57,10 +67,9 @@ export function getClerkPrimarySignUpUrl(): string {
   if (url?.startsWith('http')) {
     return url;
   }
-  return CLERK_ACCOUNT_PORTAL_SIGN_UP_URL;
+  return CLERK_SHARED_ACCOUNT_PORTAL_SIGN_UP_URL;
 }
 
-/** Paths on agentops.one used for ClerkProvider signInUrl / signUpUrl (satellite sync entry). */
 export function getClerkSatelliteSignInPath(): string {
   return CLERK_SATELLITE_SIGN_IN_PATH;
 }
@@ -118,7 +127,6 @@ function applyAccountPortalRedirectParams(
   const returnUrl = appendSatelliteSyncParam(forceRedirect);
 
   portalUrl.searchParams.set('redirect_url', returnUrl);
-  // Override Clerk instance defaults (home_url still points at dead oneaccess.one).
   if (mode === 'sign-in') {
     portalUrl.searchParams.set('sign_in_force_redirect_url', forceRedirect);
   } else {

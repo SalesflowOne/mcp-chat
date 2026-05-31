@@ -12,8 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import {
   buildAccountPortalSignInUrl,
-  buildSatelliteReturnUrl,
-  getClerkPrimarySignUpUrl,
+  buildAccountPortalSignUpUrl,
   isClerkSatelliteApp,
 } from '@/lib/clerk-config';
 
@@ -27,11 +26,7 @@ export function SignInModal({ isOpen, onClose }: SignInModalProps) {
     ? buildAccountPortalSignInUrl('/')
     : '/sign-in';
   const signUpHref = isClerkSatelliteApp()
-    ? (() => {
-        const signUp = new URL(getClerkPrimarySignUpUrl());
-        signUp.searchParams.set('redirect_url', buildSatelliteReturnUrl('/'));
-        return signUp.toString();
-      })()
+    ? buildAccountPortalSignUpUrl('/')
     : '/sign-up';
 
   return (

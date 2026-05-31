@@ -3,6 +3,7 @@
 import { ClerkProvider } from '@clerk/nextjs';
 
 import {
+  getClerkForceRedirectUrl,
   getClerkPrimarySignInUrl,
   getClerkPrimarySignUpUrl,
   getClerkSatelliteDomain,
@@ -17,6 +18,7 @@ export function AppClerkProvider({ children }: { children: React.ReactNode }) {
   }
 
   const isSatellite = isClerkSatelliteApp();
+  const forceRedirectUrl = isSatellite ? getClerkForceRedirectUrl('/') : undefined;
 
   return (
     <ClerkProvider
@@ -25,8 +27,10 @@ export function AppClerkProvider({ children }: { children: React.ReactNode }) {
       domain={isSatellite ? getClerkSatelliteDomain() : undefined}
       signInUrl={getClerkPrimarySignInUrl()}
       signUpUrl={getClerkPrimarySignUpUrl()}
-      signInFallbackRedirectUrl="/"
-      signUpFallbackRedirectUrl="/"
+      signInFallbackRedirectUrl={forceRedirectUrl ?? '/'}
+      signUpFallbackRedirectUrl={forceRedirectUrl ?? '/'}
+      signInForceRedirectUrl={forceRedirectUrl}
+      signUpForceRedirectUrl={forceRedirectUrl}
       satelliteAutoSync={false}
     >
       {children}

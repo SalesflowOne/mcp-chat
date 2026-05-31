@@ -76,13 +76,32 @@ export function buildSatelliteReturnUrl(path = '/'): string {
   return new URL(path, base.endsWith('/') ? base : `${base}/`).toString();
 }
 
+/** Absolute URL Clerk must use after auth — overrides dead oneaccess.one dashboard defaults when set. */
+export function getClerkForceRedirectUrl(path = '/'): string {
+  const forced = process.env.NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL?.trim();
+  if (forced?.startsWith('http')) {
+    return forced;
+  }
+  return buildSatelliteReturnUrl(path);
+}
+
+/**
+ * Account Portal sign-in URL with satellite return params.
+ * Clerk instance still has home_url/after_sign_in_url → oneaccess.one in dashboard;
+ * redirect_url + force redirect env must point at agentops.one.
+ */
 export function buildAccountPortalSignInUrl(returnPath = '/'): string {
+  const returnUrl = buildSatelliteReturnUrl(returnPath);
   const signIn = new URL(getClerkPrimarySignInUrl());
-  signIn.searchParams.set(
-    'redirect_url',
-    buildSatelliteReturnUrl(returnPath),
-  );
+  signIn.searchParams.set('redirect_url', returnUrl);
   return signIn.toString();
+}
+
+export function buildAccountPortalSignUpUrl(returnPath = '/'): string {
+  const returnUrl = buildSatelliteReturnUrl(returnPath);
+  const signUp = new URL(getClerkPrimarySignUpUrl());
+  signUp.searchParams.set('redirect_url', returnUrl);
+  return signUp.toString();
 }
 
 export function getClerkMiddlewareOptions() {

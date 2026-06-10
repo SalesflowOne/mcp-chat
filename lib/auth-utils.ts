@@ -37,28 +37,33 @@ export async function getEffectiveSession(): Promise<AppSession | null> {
   if (isSupabaseConfigured()) {
     try {
       const tenant = await resolveTenantContext();
-      if (!tenant) {
-        return null;
+      if (tenant) {
+        return {
+          user: {
+            id: tenant.clerkUserId,
+            name:
+              tenant.appUser.full_name ||
+              [clerkProfile?.firstName, clerkProfile?.lastName]
+                .filter(Boolean)
+                .join(' ') ||
+              'User',
+            email: tenant.appUser.email,
+          },
+          clerkUserId: tenant.clerkUserId,
+          appUserId: tenant.appUser.id,
+          organizationId: tenant.organizationId,
+          isMasterAdmin: tenant.appUser.is_master_admin,
+        };
       }
 
-      return {
-        user: {
-          id: tenant.clerkUserId,
-          name:
-            tenant.appUser.full_name ||
-            [clerkProfile?.firstName, clerkProfile?.lastName]
-              .filter(Boolean)
-              .join(' ') ||
-            'User',
-          email: tenant.appUser.email,
-        },
-        clerkUserId: tenant.clerkUserId,
-        appUserId: tenant.appUser.id,
-        organizationId: tenant.organizationId,
-        isMasterAdmin: tenant.appUser.is_master_admin,
-      };
+      console.warn(
+        'Supabase tenant context unavailable; falling back to Clerk-only session',
+      );
     } catch (error) {
-      console.error('Failed to resolve Supabase tenant context', error);
+      console.error(
+        'Failed to resolve Supabase tenant context; falling back to Clerk-only session',
+        error,
+      );
     }
   }
 

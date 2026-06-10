@@ -211,9 +211,14 @@ export async function POST(request: Request) {
       },
     })
   } catch (error) {
-    return new Response("An error occurred while processing your request!", {
-      status: 404,
-    })
+    console.error("Chat route error:", error)
+    return new Response(
+      JSON.stringify({ error: "An error occurred while processing your request!" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    )
   }
 }
 

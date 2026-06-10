@@ -3,10 +3,8 @@
 import { useRouter } from "next/navigation"
 import { useEffectiveSession } from '@/hooks/use-effective-session'
 
-import { ModelSelector } from "@/components/model-selector"
 import { SidebarToggle } from "@/components/sidebar-toggle"
 import { Button } from "@/components/ui/button"
-import { GitHubButton } from "@/components/github-button"
 import { DocsButton } from "@/components/docs-button"
 import { memo } from "react"
 import { PlusIcon } from "./icons"
@@ -41,16 +39,6 @@ function PureChatHeader({
       <div className="mt-1">
         <SidebarToggle />
       </div>
-
-      {/* Mobile layout: Show controls in left-to-right order with new chat button on the right */}
-      {!isReadonly && (
-        <div className="mt-1 md:hidden">
-          <ModelSelector
-            selectedModelId={selectedModelId}
-            className=""
-          />
-        </div>
-      )}
 
       {!isReadonly && (
         <div className="mt-1 md:hidden">
@@ -107,16 +95,6 @@ function PureChatHeader({
         </Tooltip>
       </div>
 
-      {/* Desktop layout: Show controls after new chat button */}
-      {!isReadonly && (
-        <div className="mt-1 hidden md:block">
-          <ModelSelector
-            selectedModelId={selectedModelId}
-            className=""
-          />
-        </div>
-      )}
-
       {!isReadonly && (
         <div className="mt-1 hidden md:block">
           <VisibilitySelector
@@ -130,9 +108,8 @@ function PureChatHeader({
       {/* Spacer to push buttons to the right on desktop */}
       <div className="flex-1 hidden md:block"></div>
 
-      <div className="mt-1 hidden md:flex gap-2 ml-auto">
-        <GitHubButton style="secondary" />
-        <DocsButton style="main" />
+      <div className="mt-1 ml-auto hidden gap-2 md:flex">
+        <DocsButton style="secondary" />
       </div>
     </header>
   )

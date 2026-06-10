@@ -22,11 +22,11 @@ import { ArrowUpIcon, PaperclipIcon, StopIcon } from './icons';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
-import { SuggestedActions } from './suggested-actions';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import equal from 'fast-deep-equal';
 import { UseChatHelpers } from '@ai-sdk/react';
 import { AppSelector, type App } from './app-selector';
+import { ModelSelectorInline } from './model-selector-inline';
 import { Hammer } from 'lucide-react';
 
 function PureMultimodalInput({
@@ -42,6 +42,7 @@ function PureMultimodalInput({
   append,
   handleSubmit,
   className,
+  selectedModelId,
 }: {
   chatId: string;
   input: UseChatHelpers['input'];
@@ -55,6 +56,7 @@ function PureMultimodalInput({
   append: UseChatHelpers['append'];
   handleSubmit: UseChatHelpers['handleSubmit'];
   className?: string;
+  selectedModelId?: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -119,7 +121,16 @@ function PureMultimodalInput({
       e.stopPropagation();
     }
     
-    // Check if user is authenticated
+    if (status !== 'ready') {
+      toast.error('Please wait for the model to finish its response!');
+      return;
+    }
+
+    if (authStatus === 'loading') {
+      toast.error('Checking authentication, please try again in a moment.');
+      return;
+    }
+
     if (authStatus === 'unauthenticated') {
       // Save current input to localStorage so it persists after auth
       setLocalStorageInput(input);
@@ -152,6 +163,7 @@ function PureMultimodalInput({
     authStatus,
     input,
     setIsSignInModalOpen,
+    status,
   ]);
 
   const uploadFile = async (file: File) => {
@@ -233,12 +245,6 @@ function PureMultimodalInput({
         }}
       />
       
-      {messages.length === 0 &&
-        attachments.length === 0 &&
-        uploadQueue.length === 0 && (
-          <SuggestedActions append={append} chatId={chatId} />
-        )}
-
       <input
         type="file"
         className="fixed -top-4 -left-4 size-0.5 opacity-0 pointer-events-none"
@@ -274,11 +280,11 @@ function PureMultimodalInput({
       <Textarea
         data-testid="multimodal-input"
         ref={textareaRef}
-        placeholder="Send a message..."
+        placeholder="Ask anything…"
         value={input}
         onChange={handleInput}
         className={cx(
-          'min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-muted pb-10 dark:border-zinc-700',
+          'min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base border bg-background pb-12 shadow-sm',
           className,
         )}
         rows={2}
@@ -300,26 +306,28 @@ function PureMultimodalInput({
         }}
       />
 
-      <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start space-x-1">
-        {/* <AttachmentsButton 
-          fileInputRef={fileInputRef} 
-          status={status} 
-          setSignInModalOpen={setIsSignInModalOpen}
-        /> */}
-        <AppsButton 
+      <div className="absolute bottom-0 left-0 flex flex-row items-center gap-1 p-2">
+        {selectedModelId && (
+          <ModelSelectorInline
+            selectedModelId={selectedModelId}
+            disabled={status !== 'ready'}
+          />
+        )}
+        <AppsButton
           status={status}
           setAppSelectorOpen={setAppSelectorOpen}
         />
       </div>
 
-      <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
-        {status === 'submitted' ? (
+      <div className="absolute bottom-0 right-0 flex flex-row justify-end p-2">
+        {status === 'submitted' || status === 'streaming' ? (
           <StopButton stop={stop} setMessages={setMessages} />
         ) : (
           <SendButton
             input={input}
             submitForm={submitForm}
             uploadQueue={uploadQueue}
+            status={status}
           />
         )}
       </div>
@@ -435,19 +443,23 @@ function PureSendButton({
   submitForm,
   input,
   uploadQueue,
+  status,
 }: {
   submitForm: () => void;
   input: string;
   uploadQueue: Array<string>;
+  status: UseChatHelpers['status'];
 }) {
   return (
     <Button
       data-testid="send-button"
-      className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
+      className="rounded-full p-1.5 h-fit border bg-indigo-600 text-white hover:bg-indigo-700 dark:border-indigo-500"
       onClick={() => {
         submitForm();
       }}
-      disabled={input.length === 0 || uploadQueue.length > 0}
+      disabled={
+        input.length === 0 || uploadQueue.length > 0 || status !== 'ready'
+      }
     >
       <ArrowUpIcon size={14} />
     </Button>
@@ -458,5 +470,6 @@ const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
   if (prevProps.uploadQueue.length !== nextProps.uploadQueue.length)
     return false;
   if (prevProps.input !== nextProps.input) return false;
+  if (prevProps.status !== nextProps.status) return false;
   return true;
 });

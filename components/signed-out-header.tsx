@@ -1,46 +1,39 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { GitHubButton } from '@/components/github-button';
+
+import { AgentOpsLogo } from '@/components/agentops-logo';
 import { SignInModal } from './sign-in-modal';
-import { useAuthContext } from './session-provider';
-import { DocsButton } from './docs-button';
+import { Button } from './ui/button';
 
 export function SignedOutHeader() {
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
-  const { isAuthDisabled } = useAuthContext();
-
-  const handleGetStarted = () => {
-    setIsSignInModalOpen(true);
-  };
 
   return (
-    <header className="flex items-center w-full px-4 py-3 bg-background gap-4 sticky top-0 z-10 border-b">
-      <Link href="/" className="flex items-center">
-        <Image
-          src="/images/pipedream.svg"
-          alt="Pipedream"
-          width={108}
-          height={24}
-          priority
-          className="dark:invert"
-        />
+    <header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <Link href="/">
+        <AgentOpsLogo />
       </Link>
-      
-      <div className="flex items-center gap-3 ml-auto">
-        <GitHubButton className="hidden md:flex" style="secondary" />
-        <DocsButton className="hidden md:flex" style="secondary" />
-        <Button onClick={handleGetStarted} variant="blue">
-          Get started
+
+      <p className="hidden text-sm text-muted-foreground md:block">
+        Run your entire stack from one agent
+      </p>
+
+      <div className="ml-auto flex items-center gap-2">
+        <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+          <Link href="https://pipedream.com/docs/connect/mcp/developers" target="_blank">
+            Docs
+          </Link>
+        </Button>
+        <Button onClick={() => setIsSignInModalOpen(true)} size="sm">
+          Sign in
         </Button>
       </div>
 
-      <SignInModal 
-        isOpen={isSignInModalOpen} 
-        onClose={() => setIsSignInModalOpen(false)} 
+      <SignInModal
+        isOpen={isSignInModalOpen}
+        onClose={() => setIsSignInModalOpen(false)}
       />
     </header>
   );

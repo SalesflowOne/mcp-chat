@@ -118,9 +118,11 @@ export async function getSpaceTools(
 
         return {
           spaceId: space.id,
+          title: space.title,
           versionNumber,
           filesUpdated: files.map((f) => f.path),
           previewPath: `/spaces/${space.id}`,
+          message: `Updated Space "${space.title}"`,
         };
       },
     }),

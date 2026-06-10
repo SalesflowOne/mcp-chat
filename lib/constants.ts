@@ -1,17 +1,9 @@
 export const isProductionEnvironment = process.env.NODE_ENV === "production";
 
-// Auth is disabled when DISABLE_AUTH is explicitly set to 'true'
-// This flag should only be used in development environments
 export const isAuthDisabled = process.env.DISABLE_AUTH === "true";
-
-// Database persistence is disabled when DISABLE_PERSISTENCE is explicitly set to 'true'
-// When Supabase is configured, set DISABLE_PERSISTENCE=false for chat history
 export const isPersistenceDisabled = process.env.DISABLE_PERSISTENCE === "true";
-
-// Session duration for guest sessions (24 hours in milliseconds)
 export const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
 
-// Banner theme styles for different message types
 export const BANNER_THEMES = {
   warning: {
     container:
@@ -25,11 +17,16 @@ export const BANNER_THEMES = {
   },
 } as const;
 
-// Base metadata used throughout the application
-export const BASE_SITE_URL = "https://chat.pipedream.com";
-export const BASE_TITLE = "MCP Chat by Pipedream";
-export const BASE_DESCRIPTION =
-  "Use MCP Chat by Pipedream to talk directly with 3,000+ APIs and supercharge your productivity";
+export const APP_NAME = "AgentOps";
+export const APP_TAGLINE = "Run your entire stack from one agent";
+export const APP_DESCRIPTION =
+  "AgentOps helps operators and business owners connect their tools, automate workflows, and ship websites — powered by Pipedream Connect.";
+
+export const BASE_SITE_URL =
+  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+  "https://agentops.one";
+export const BASE_TITLE = `${APP_NAME} — Operator OS`;
+export const BASE_DESCRIPTION = APP_DESCRIPTION;
 
 export const BASE_METADATA = {
   metadataBase: new URL(BASE_SITE_URL),
@@ -39,7 +36,7 @@ export const BASE_METADATA = {
     title: BASE_TITLE,
     description: BASE_DESCRIPTION,
     url: BASE_SITE_URL,
-    siteName: BASE_TITLE,
+    siteName: APP_NAME,
     locale: "en_US",
     type: "website",
     images: [
@@ -47,7 +44,7 @@ export const BASE_METADATA = {
         url: "/opengraph-image.png",
         width: 1200,
         height: 630,
-        alt: "MCP Chat by Pipedream",
+        alt: APP_NAME,
       },
     ],
   },
@@ -55,14 +52,27 @@ export const BASE_METADATA = {
     card: "summary_large_image",
     title: BASE_TITLE,
     description: BASE_DESCRIPTION,
-    creator: "@pipedream",
     images: [
       {
         url: "/twitter-image.png",
         width: 1200,
         height: 630,
-        alt: "MCP Chat by Pipedream",
+        alt: APP_NAME,
       },
     ],
   },
 };
+
+/** Curated connector slugs for onboarding and quick-connect */
+export const STARTER_CONNECTOR_SLUGS = [
+  "slack",
+  "stripe",
+  "notion",
+  "google_calendar",
+  "gmail",
+  "github",
+  "hubspot",
+  "pipedrive",
+  "airtable",
+  "google_sheets",
+] as const;

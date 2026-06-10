@@ -2,9 +2,15 @@
 
 import type { Attachment, UIMessage } from "ai";
 import { useChat } from "@ai-sdk/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { toast } from "sonner";
+import Link from "next/link";
+
 import { ChatHeader } from "@/components/chat-header";
+import { ChatHome } from "@/components/chat-home";
+import { InlineSpacePanel } from "@/components/inline-space-panel";
 import type { Vote } from "@/lib/db/schema";
 import { fetcher, generateUUID } from "@/lib/utils";
 import { Artifact } from "./artifact";
@@ -12,9 +18,9 @@ import { MultimodalInput } from "./multimodal-input";
 import { Messages } from "./messages";
 import { VisibilityType } from "./visibility-selector";
 import { useArtifactSelector } from "@/hooks/use-artifact";
-import { toast } from "sonner";
-import Link from "next/link";
+import { useActiveSpace } from "@/hooks/use-active-space";
 import { useEffectiveSession } from "@/hooks/use-effective-session";
+import { APP_NAME } from "@/lib/constants";
 
 export function Chat({
   id,
@@ -32,7 +38,6 @@ export function Chat({
   selectedVisibilityType: VisibilityType;
   isReadonly: boolean;
   hasAPIKeys?: boolean;
-  /** When set, chat runs in Space mode (no artifact panel; Space tools enabled). */
   spaceId?: string;
   onSpaceUpdated?: () => void;
 }) {
@@ -40,6 +45,7 @@ export function Chat({
   const { mutate } = useSWRConfig();
   const { data: session } = useEffectiveSession();
   const isSignedIn = !!session?.user;
+  const { spaceId: activeSpaceId, setActiveSpace } = useActiveSpace();
 
   const {
     messages,
@@ -55,7 +61,7 @@ export function Chat({
     id,
     body: {
       id,
-      selectedChatModel: selectedChatModel,
+      selectedChatModel,
       ...(spaceId ? { spaceId } : {}),
     },
     initialMessages,
@@ -67,132 +73,148 @@ export function Chat({
       onSpaceUpdated?.();
     },
     onError: (error) => {
-      // Check if error is a 401 unauthorized due to authentication
-      if (error instanceof Error && error.message.includes("401")) {
-        // This error is likely from the submitForm auth check, so we don't need to show an error
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("401") || message.toLowerCase().includes("unauthorized")) {
+        toast.error("Sign in to send messages.");
         return;
       }
-      toast.error("An error occurred, please try again!");
+      toast.error("Something went wrong. Try again.");
     },
   });
 
+  // Run playbook prompt from /playbooks page
+  useEffect(() => {
+    const pending = sessionStorage.getItem("agentops_pending_prompt");
+    if (!pending || messages.length > 0) return;
+    sessionStorage.removeItem("agentops_pending_prompt");
+    append({ role: "user", content: pending });
+  }, [append, messages.length]);
+
+  // Auto-open Space preview when agent creates/updates a space
+  useEffect(() => {
+    if (spaceMode) return;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.role !== "assistant") continue;
+      for (const part of msg.parts ?? []) {
+        if (part.type !== "tool-invocation" || part.toolInvocation.state !== "result") {
+          continue;
+        }
+        const { toolName, result } = part.toolInvocation;
+        if (
+          (toolName === "createSpace" || toolName === "updateSpaceFiles") &&
+          result &&
+          typeof result === "object" &&
+          "spaceId" in result &&
+          typeof (result as { spaceId: string }).spaceId === "string"
+        ) {
+          const r = result as { spaceId: string; title?: string };
+          setActiveSpace(r.spaceId, r.title);
+          return;
+        }
+      }
+    }
+  }, [messages, setActiveSpace, spaceMode]);
+
   const { data: votes } = useSWR<Array<Vote>>(
     messages.length >= 2 ? `/api/vote?chatId=${id}` : null,
-    fetcher
+    fetcher,
   );
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
+  const showInlineSpace = !spaceMode && Boolean(activeSpaceId);
 
-  // Show error if no API keys are configured
   if (hasAPIKeys === false) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-dvh bg-background px-4">
-        <div className="max-w-2xl w-full space-y-6 text-center">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 dark:bg-red-900/20 dark:border-red-800">
-            <h2 className="text-xl font-semibold text-red-800 dark:text-red-200 mb-3">
-              Missing AI API Keys
-            </h2>
-            <p className="text-red-700 dark:text-red-300 mb-4">
-              Oops, the chat app requires at least one of these environment
-              variables to be set:
-            </p>
-            <ul className="text-left space-y-2 mb-4">
-              <li className="text-red-600 dark:text-red-400">
-                <code className="bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded text-sm">
-                  OPENAI_API_KEY
-                </code>{" "}
-                - For OpenAI models
-              </li>
-              <li className="text-red-600 dark:text-red-400">
-                <code className="bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded text-sm">
-                  ANTHROPIC_API_KEY
-                </code>{" "}
-                - For Anthropic Claude models
-              </li>
-              <li className="text-red-600 dark:text-red-400">
-                <code className="bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded text-sm">
-                  GOOGLE_GENERATIVE_AI_API_KEY
-                </code>{" "}
-                - For Google Gemini models
-              </li>
-            </ul>
-            <p className="text-sm text-red-600 dark:text-red-400">
-              Please add at least one API key to your{" "}
-              <code className="bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded">
-                .env
-              </code>{" "}
-              file and restart the server.
-            </p>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            <p>
-              Need help? Check the{" "}
-              <Link
-                href="https://github.com/PipedreamHQ/mcp-chat?tab=readme-ov-file#prerequisites"
-                className="underline hover:text-foreground"
-              >
-                README
-              </Link>{" "}
-              for setup instructions.
-            </p>
-          </div>
+      <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4">
+        <div className="w-full max-w-2xl space-y-4 rounded-xl border p-6 text-center">
+          <h2 className="text-xl font-semibold">AI keys required</h2>
+          <p className="text-muted-foreground">
+            Add at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, or
+            GOOGLE_GENERATIVE_AI_API_KEY to your environment.
+          </p>
         </div>
       </div>
     );
   }
 
-  // Layout adjustment for signed-out users
+  const inputBlock = !isReadonly && (
+    <form className="border-t bg-background px-4 py-4">
+      <div className={showInlineSpace ? "w-full" : "mx-auto w-full max-w-3xl"}>
+        <MultimodalInput
+          chatId={id}
+          input={input}
+          setInput={setInput}
+          handleSubmit={handleSubmit}
+          status={status}
+          stop={stop}
+          attachments={attachments}
+          setAttachments={setAttachments}
+          messages={messages}
+          setMessages={setMessages}
+          append={append}
+          selectedModelId={selectedChatModel}
+        />
+      </div>
+    </form>
+  );
+
+  const signedOutHome = (
+    <div className="flex flex-1 flex-col items-center justify-center px-4">
+      <div className="mb-8 max-w-lg text-center">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          Run your stack with {APP_NAME}
+        </h1>
+        <p className="mt-3 text-muted-foreground">
+          Sign in to connect your tools, automate operations, and build Spaces.
+        </p>
+        <Link href="/sign-in" className="mt-4 inline-block text-sm font-medium text-indigo-600 underline">
+          Get started
+        </Link>
+      </div>
+      <div className="w-full max-w-3xl">{inputBlock}</div>
+    </div>
+  );
+
+  const chatColumn = (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {!spaceMode && isSignedIn && (
+        <ChatHeader
+          chatId={id}
+          selectedModelId={selectedChatModel}
+          selectedVisibilityType={selectedVisibilityType}
+          isReadonly={isReadonly}
+        />
+      )}
+
+      {messages.length === 0 && isSignedIn && !spaceMode ? (
+        <ChatHome append={append} chatId={id} />
+      ) : (
+        <Messages
+          chatId={id}
+          status={status}
+          votes={votes}
+          messages={messages}
+          setMessages={setMessages}
+          reload={reload}
+          isReadonly={isReadonly}
+          isArtifactVisible={spaceMode ? false : isArtifactVisible}
+          append={append}
+          isSignedIn={isSignedIn}
+        />
+      )}
+
+      {inputBlock}
+    </div>
+  );
+
   if (!isSignedIn) {
     return (
       <>
-        <div className="flex flex-col min-w-0 h-dvh bg-background">
-          {/* Show welcome message only when there are no messages */}
-          {messages.length === 0 ? (
-            <div className="flex-1 flex flex-col justify-center items-center px-4">
-              <div className="text-center mb-8 max-w-3xl">
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 mb-2">
-                  <h1 className="text-3xl font-bold max-w-[280px] sm:max-w-none leading-tight">
-                    Welcome to MCP Chat by Pipedream
-                  </h1>
-                  <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300 mt-1 sm:mt-0">
-                    Alpha
-                  </span>
-                </div>
-                <p className="text-muted-foreground max-w-sm mx-auto">
-                  Chat directly with 3,000+ APIs powered by{" "}
-                  <Link
-                    className="font-medium underline underline-offset-4"
-                    href="https://pipedream.com/docs/connect/mcp/developers"
-                    target="_blank"
-                  >
-                    Pipedream Connect
-                  </Link>
-                </p>
-              </div>
-
-              {/* Centered input form for home page */}
-              <form className="w-full bg-background mb-4 max-w-3xl">
-                {!isReadonly && (
-                  <MultimodalInput
-                    chatId={id}
-                    input={input}
-                    setInput={setInput}
-                    handleSubmit={handleSubmit}
-                    status={status}
-                    stop={stop}
-                    attachments={attachments}
-                    setAttachments={setAttachments}
-                    messages={messages}
-                    setMessages={setMessages}
-                    append={append}
-                  />
-                )}
-              </form>
-            </div>
-          ) : (
+        <div className="flex h-dvh min-w-0 flex-col bg-background">
+          {messages.length === 0 ? signedOutHome : (
             <>
-              {/* Messages container - only show when there are messages */}
               <Messages
                 chatId={id}
                 status={status}
@@ -205,29 +227,10 @@ export function Chat({
                 append={append}
                 isSignedIn={false}
               />
-
-              {/* Sticky input form at the bottom for chat pages */}
-              <form className="flex mx-auto px-4 bg-background pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">
-                {!isReadonly && (
-                  <MultimodalInput
-                    chatId={id}
-                    input={input}
-                    setInput={setInput}
-                    handleSubmit={handleSubmit}
-                    status={status}
-                    stop={stop}
-                    attachments={attachments}
-                    setAttachments={setAttachments}
-                    messages={messages}
-                    setMessages={setMessages}
-                    append={append}
-                  />
-                )}
-              </form>
+              {inputBlock}
             </>
           )}
         </div>
-
         <Artifact
           chatId={id}
           input={input}
@@ -248,55 +251,27 @@ export function Chat({
     );
   }
 
-  // Default layout for signed-in users
   return (
     <>
       <div
-        className={`flex min-w-0 flex-col bg-background ${spaceMode ? 'h-full min-h-0' : 'h-dvh'}`}
+        className={`flex min-w-0 bg-background ${spaceMode ? "h-full min-h-0" : "h-dvh"}`}
       >
-        {!spaceMode && (
-          <ChatHeader
-            chatId={id}
-            selectedModelId={selectedChatModel}
-            selectedVisibilityType={selectedVisibilityType}
-            isReadonly={isReadonly}
-          />
+        {showInlineSpace ? (
+          <PanelGroup direction="horizontal" className="h-full min-h-0 w-full">
+            <Panel defaultSize={45} minSize={30}>
+              {chatColumn}
+            </Panel>
+            <PanelResizeHandle className="w-px bg-border transition-colors hover:bg-indigo-400/50" />
+            <Panel defaultSize={55} minSize={25}>
+              <InlineSpacePanel />
+            </Panel>
+          </PanelGroup>
+        ) : (
+          chatColumn
         )}
-
-        <Messages
-          chatId={id}
-          status={status}
-          votes={votes}
-          messages={messages}
-          setMessages={setMessages}
-          reload={reload}
-          isReadonly={isReadonly}
-          isArtifactVisible={spaceMode ? false : isArtifactVisible}
-          append={append}
-        />
-
-        <form
-          className={`flex gap-2 bg-background px-4 pb-4 md:pb-6 ${spaceMode ? 'w-full' : 'mx-auto w-full md:max-w-3xl'}`}
-        >
-          {!isReadonly && (
-            <MultimodalInput
-              chatId={id}
-              input={input}
-              setInput={setInput}
-              handleSubmit={handleSubmit}
-              status={status}
-              stop={stop}
-              attachments={attachments}
-              setAttachments={setAttachments}
-              messages={messages}
-              setMessages={setMessages}
-              append={append}
-            />
-          )}
-        </form>
       </div>
 
-      {!spaceMode && (
+      {!spaceMode && !showInlineSpace && (
         <Artifact
           chatId={id}
           input={input}

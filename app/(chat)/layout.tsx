@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import Script from 'next/script';
 
 import { AppSidebar } from '@/components/app-sidebar';
+import { ActiveSpaceProvider } from '@/hooks/use-active-space';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { SessionProvider } from '@/components/session-provider';
 import { SignedOutHeader } from '@/components/signed-out-header';
@@ -42,6 +43,7 @@ async function LayoutContent({ children }: { children: React.ReactNode }) {
       isPersistenceDisabled={isPersistenceDisabled}
       guestSession={guestSession}
     >
+      <ActiveSpaceProvider>
       <SidebarProvider defaultOpen={!isCollapsed}>
         {isSignedIn ? (
           <>
@@ -55,6 +57,7 @@ async function LayoutContent({ children }: { children: React.ReactNode }) {
           </div>
         )}
       </SidebarProvider>
+      </ActiveSpaceProvider>
     </SessionProvider>
   );
 }

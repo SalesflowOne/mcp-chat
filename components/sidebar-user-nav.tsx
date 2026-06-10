@@ -51,8 +51,13 @@ export function SidebarUserNav({ user }: { user: User }) {
               {`Toggle ${theme === 'light' ? 'dark' : 'light'} mode`}
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
+              <a href="/connectors" className="w-full cursor-pointer">
+                Connectors
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
               <a href="/accounts" className="w-full cursor-pointer">
-                Accounts
+                Connected accounts
               </a>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

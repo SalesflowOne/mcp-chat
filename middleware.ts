@@ -29,15 +29,14 @@ const isPublicRoute = createRouteMatcher([
 
 const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 
-const isProtectedApiRoute = createRouteMatcher(['/api/chat(.*)']);
-
 const clerkHandler = clerkMiddleware(
   async (auth, request) => {
     if (isPublicRoute(request)) {
       return;
     }
 
-    if (isProtectedApiRoute(request) || isAdminRoute(request)) {
+    // /api/chat returns JSON 401 — avoid HTML redirects that break the AI SDK client.
+    if (isAdminRoute(request)) {
       await auth.protect();
     }
   },

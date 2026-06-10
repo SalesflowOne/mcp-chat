@@ -21,6 +21,7 @@ import { useArtifactSelector } from "@/hooks/use-artifact";
 import { useActiveSpace } from "@/hooks/use-active-space";
 import { useEffectiveSession } from "@/hooks/use-effective-session";
 import { APP_NAME } from "@/lib/constants";
+import { ToolRunLog } from "@/components/tool-run-log";
 
 export function Chat({
   id,
@@ -185,6 +186,13 @@ export function Chat({
           selectedModelId={selectedChatModel}
           selectedVisibilityType={selectedVisibilityType}
           isReadonly={isReadonly}
+        />
+      )}
+
+      {!spaceMode && isSignedIn && messages.length > 0 && (
+        <ToolRunLog
+          messages={messages}
+          isStreaming={status === 'streaming' || status === 'submitted'}
         />
       )}
 

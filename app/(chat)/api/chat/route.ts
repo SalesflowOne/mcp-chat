@@ -13,6 +13,7 @@ import {
   getTrailingMessageId,
 } from "@/lib/utils"
 import { getEffectiveSession, shouldPersistData } from "@/lib/auth-utils"
+import { userApprovedDestructiveActions } from "@/lib/approvals/detect"
 import { MCPSessionManager } from "@/mods/mcp-client"
 import {
   UIMessage,
@@ -116,8 +117,10 @@ export async function POST(request: Request) {
       })
     }
 
-    // MCP server is stateless - state is restored via chatId header, no session IDs needed
-    const mcpSession = new MCPSessionManager(MCP_BASE_URL, clerkUserId, id)
+    const allowDestructive = userApprovedDestructiveActions(messages)
+    const mcpSession = new MCPSessionManager(MCP_BASE_URL, clerkUserId, id, {
+      allowDestructive,
+    })
 
     return createDataStreamResponse({
       execute: async (dataStream) => {
@@ -135,15 +138,21 @@ export async function POST(request: Request) {
             experimental_generateMessageId: generateUUID,
             getTools: async () => {
               const mcpTools = await mcpSession.tools({ useCache: false })
+              const { getArtifactTools } = await import('@/lib/artifacts/tools')
+              const artifactTools = getArtifactTools({
+                session: session!,
+                dataStream,
+              })
+
               if (!includeSpaces) {
-                return mcpTools
+                return { ...mcpTools, ...artifactTools }
               }
               const { getSpaceTools } = await import('@/lib/spaces/tools')
               const spaceTools = await getSpaceTools({
                 chatThreadId: id,
                 spaceId,
               })
-              return { ...mcpTools, ...spaceTools }
+              return { ...mcpTools, ...artifactTools, ...spaceTools }
             },
             onFinish: async ({ response, usage }) => {
               if (appUserId && shouldPersistData()) {

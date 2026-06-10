@@ -52,6 +52,8 @@ export function SpaceWorkspace({
   const [previewKey, setPreviewKey] = useState(0);
   const [selectedPath, setSelectedPath] = useState<string | null>('index.html');
   const [sharing, setSharing] = useState(false);
+  const [deploying, setDeploying] = useState(false);
+  const [deployUrl, setDeployUrl] = useState<string | null>(null);
 
   const title = data?.space.title ?? 'Space';
 
@@ -59,6 +61,26 @@ export function SpaceWorkspace({
     setPreviewKey((k) => k + 1);
     void mutate();
   }, [mutate]);
+
+  const handleDeploy = async () => {
+    setDeploying(true);
+    try {
+      const res = await fetch(`/api/spaces/${spaceId}/deploy`, { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error ?? 'Deploy failed');
+      }
+      setDeployUrl(json.url);
+      toast.success('Deployed to Vercel');
+      if (json.url) {
+        await navigator.clipboard.writeText(json.url);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Deploy failed');
+    } finally {
+      setDeploying(false);
+    }
+  };
 
   const handleShare = async () => {
     setSharing(true);
@@ -107,11 +129,30 @@ export function SpaceWorkspace({
             type="button"
             variant="outline"
             size="sm"
+            onClick={handleDeploy}
+            disabled={deploying}
+          >
+            {deploying ? 'Deploying…' : 'Deploy'}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={handleShare}
             disabled={sharing}
           >
             {sharing ? 'Sharing…' : 'Share'}
           </Button>
+          {deployUrl && (
+            <a
+              href={deployUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-indigo-600 underline"
+            >
+              Live
+            </a>
+          )}
         </div>
       </header>
 

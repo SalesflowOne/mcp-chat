@@ -21,6 +21,7 @@ import { UseChatHelpers } from '@ai-sdk/react';
 import { ToolCallRunning } from './tool-call-running';
 import { ToolCallResult } from './tool-call-result';
 import { SpaceToolResult } from './spaces/space-tool-result';
+import { ApprovalGate } from './approval-gate';
 
 const PurePreviewMessage = ({
   chatId,
@@ -192,6 +193,28 @@ const PurePreviewMessage = ({
 
                 if (state === 'result') {
                   const { result } = toolInvocation;
+
+                  if (
+                    result &&
+                    typeof result === 'object' &&
+                    'requiresApproval' in result &&
+                    (result as { requiresApproval: boolean }).requiresApproval
+                  ) {
+                    const approval = result as {
+                      requiresApproval: boolean;
+                      toolName?: string;
+                      message?: string;
+                    };
+                    return (
+                      <div key={toolCallId}>
+                        <ApprovalGate
+                          toolName={approval.toolName ?? toolName}
+                          message={approval.message}
+                          append={append}
+                        />
+                      </div>
+                    );
+                  }
 
                   return (
                     <div key={toolCallId}>

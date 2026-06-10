@@ -50,6 +50,7 @@ const KEYS_TO_SET = {
   NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: 'https://agentops.one/',
   NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL: 'https://agentops.one/',
   NEXT_PUBLIC_CLERK_SIGN_UP_FORCE_REDIRECT_URL: 'https://agentops.one/',
+  VERCEL_TEAM_ID: TEAM_ID,
 };
 
 const token = process.env.VERCEL_TOKEN;

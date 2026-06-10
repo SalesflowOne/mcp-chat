@@ -3,6 +3,7 @@ import { resolveTenantContext } from '@/lib/tenant/context';
 import {
   assemblePreviewHtml,
   buildPreviewHeaders,
+  detectReactSpace,
 } from '@/lib/spaces/preview';
 import { getPreviewFiles } from '@/lib/spaces/repository';
 
@@ -24,9 +25,10 @@ export async function GET(request: Request, { params }: Params) {
     const files = await getPreviewFiles(id, ctx);
     const url = new URL(request.url);
     const assetBase = `${url.origin}/api/spaces/${id}/assets/`;
+    const reactMode = detectReactSpace(files);
     const html = assemblePreviewHtml(files, assetBase);
 
-    return new Response(html, { headers: buildPreviewHeaders() });
+    return new Response(html, { headers: buildPreviewHeaders(reactMode) });
   } catch {
     return new Response('Not found', { status: 404 });
   }

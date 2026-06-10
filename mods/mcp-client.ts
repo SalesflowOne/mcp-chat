@@ -4,6 +4,10 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { jsonSchema, Schema, tool, ToolSet } from "ai"
 import Exa from "exa-js"
 import { pdHeaders } from "../lib/pd-backend-client"
+import {
+  approvalRequiredResult,
+  isDestructiveTool,
+} from "../lib/approvals/patterns"
 
 type CallToolResult = any
 
@@ -123,12 +127,19 @@ class MCPSessionManager {
   private connectionPromise: Promise<void> | null = null
   private chatId: string
   private userId: string
+  private allowDestructive: boolean
 
-  constructor(mcpBaseUrl: string, userId: string, chatId: string) {
+  constructor(
+    mcpBaseUrl: string,
+    userId: string,
+    chatId: string,
+    options?: { allowDestructive?: boolean },
+  ) {
     console.log(`Using ${mcpBaseUrl} as the MCP Server.`)
     this.serverUrl = mcpBaseUrl
     this.chatId = chatId
     this.userId = userId
+    this.allowDestructive = options?.allowDestructive ?? false
     console.log(`Creating MCP Session: ${this.serverUrl} chatId=${this.chatId}`)
   }
 
@@ -232,6 +243,9 @@ class MCPSessionManager {
         description: mcpTool.description || "",
         parameters: jsonSchema(mcpTool.inputSchema),
         execute: async (args: unknown, options: ToolExecutionOptions) => {
+          if (isDestructiveTool(mcpTool.name) && !this.allowDestructive) {
+            return approvalRequiredResult(mcpTool.name, args)
+          }
           return this.executeTool(mcpTool.name, args, {
             timeout: 180_000, // 3 minutes
             ...options,

@@ -2,6 +2,7 @@ import { getEffectiveSession } from '@/lib/auth-utils';
 import { resolveTenantContext } from '@/lib/tenant/context';
 import {
   buildAssetHeaders,
+  detectReactSpace,
   getAssetContent,
 } from '@/lib/spaces/preview';
 import { getPreviewFiles } from '@/lib/spaces/repository';
@@ -36,7 +37,8 @@ export async function GET(_request: Request, { params }: Params) {
       return new Response('Not found', { status: 404 });
     }
 
-    return new Response(content, { headers: buildAssetHeaders(path) });
+    const reactMode = detectReactSpace(files);
+    return new Response(content, { headers: buildAssetHeaders(path, reactMode) });
   } catch {
     return new Response('Not found', { status: 404 });
   }

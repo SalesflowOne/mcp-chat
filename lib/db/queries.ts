@@ -319,13 +319,28 @@ export async function saveDocument({
   kind,
   content,
   userId,
+  organizationId,
 }: {
   id: string;
   title: string;
   kind: ArtifactKind;
   content: string;
   userId: string;
+  organizationId?: string;
 }) {
+  if (useSupabasePersistence() && organizationId) {
+    const { saveArtifactSupabase } = await import('@/lib/data/artifacts-supabase');
+    await saveArtifactSupabase({
+      id,
+      title,
+      kind,
+      content,
+      userId,
+      organizationId,
+    });
+    return;
+  }
+
   try {
     return await getDrizzleDb().insert(document).values({
       id,
@@ -342,6 +357,17 @@ export async function saveDocument({
 }
 
 export async function getDocumentsById({ id }: { id: string }) {
+  if (useSupabasePersistence()) {
+    const {
+      getArtifactsByIdSupabase,
+      toLegacyDocument,
+    } = await import('@/lib/data/artifacts-supabase');
+    const tenant = await resolveTenantContext();
+    const rows = await getArtifactsByIdSupabase({ id });
+    const userId = tenant?.appUser.id ?? '';
+    return rows.map((r) => toLegacyDocument(r, r.user_id ?? userId));
+  }
+
   try {
     const documents = await getDrizzleDb()
       .select()
@@ -357,6 +383,17 @@ export async function getDocumentsById({ id }: { id: string }) {
 }
 
 export async function getDocumentById({ id }: { id: string }) {
+  if (useSupabasePersistence()) {
+    const {
+      getLatestArtifactSupabase,
+      toLegacyDocument,
+    } = await import('@/lib/data/artifacts-supabase');
+    const tenant = await resolveTenantContext();
+    const row = await getLatestArtifactSupabase({ id });
+    if (!row) return undefined;
+    return toLegacyDocument(row, row.user_id ?? tenant?.appUser.id ?? '');
+  }
+
   try {
     const [selectedDocument] = await getDrizzleDb()
       .select()
@@ -378,6 +415,14 @@ export async function deleteDocumentsByIdAfterTimestamp({
   id: string;
   timestamp: Date;
 }) {
+  if (useSupabasePersistence()) {
+    const { deleteArtifactsAfterTimestampSupabase } = await import(
+      '@/lib/data/artifacts-supabase'
+    );
+    await deleteArtifactsAfterTimestampSupabase({ id, timestamp });
+    return;
+  }
+
   try {
     await getDrizzleDb()
       .delete(suggestion)

@@ -28,7 +28,8 @@ export async function GET(request: Request) {
     return new Response('Not Found', { status: 404 });
   }
 
-  if (document.userId !== session.user.id) {
+  const ownerId = session.appUserId ?? session.user.id;
+  if (document.userId !== ownerId && document.userId !== session.user.id) {
     return new Response('Unauthorized', { status: 401 });
   }
 
@@ -56,13 +57,15 @@ export async function POST(request: Request) {
   }: { content: string; title: string; kind: ArtifactKind } =
     await request.json();
 
-  if (session.user?.id) {
+  const ownerId = session.appUserId ?? session.user?.id;
+  if (ownerId) {
     const document = await saveDocument({
       id,
       content,
       title,
       kind,
-      userId: session.user.id,
+      userId: ownerId,
+      organizationId: session.organizationId,
     });
 
     return Response.json(document, { status: 200 });
@@ -91,7 +94,8 @@ export async function PATCH(request: Request) {
 
   const [document] = documents;
 
-  if (document.userId !== session.user.id) {
+  const ownerId = session.appUserId ?? session.user.id;
+  if (document.userId !== ownerId && document.userId !== session.user.id) {
     return new Response('Unauthorized', { status: 401 });
   }
 

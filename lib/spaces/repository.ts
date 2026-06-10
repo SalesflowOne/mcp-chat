@@ -5,11 +5,8 @@ import { nanoid } from 'nanoid';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { requireOrgAccess } from '@/lib/tenant/auth';
 import type { TenantContext } from '@/lib/tenant/context';
-import {
-  DEFAULT_SPACE_FILES,
-  MAX_SPACE_FILES,
-  SPACE_PREVIEW_KIND,
-} from '@/lib/spaces/constants';
+import { DEFAULT_SPACE_FILES, MAX_SPACE_FILES } from '@/lib/spaces/constants';
+import { detectSpaceRuntime } from '@/lib/spaces/runtime';
 import {
   mimeTypeForPath,
   sanitizeSpacePath,
@@ -140,6 +137,12 @@ export async function createSpace({
   const slugBase = slugify(title);
   const slug = `${slugBase}-${nanoid(6).toLowerCase()}`;
 
+  const seedFiles =
+    files && files.length > 0
+      ? files
+      : DEFAULT_SPACE_FILES.map((f) => ({ path: f.path, content: f.content }));
+  const previewKind = detectSpaceRuntime(seedFiles);
+
   const { data: space, error } = await supabase
     .from('spaces')
     .insert({
@@ -149,7 +152,7 @@ export async function createSpace({
       title,
       slug,
       status: 'draft',
-      preview_kind: SPACE_PREVIEW_KIND,
+      preview_kind: previewKind,
       visibility: 'private',
     })
     .select('*')
@@ -158,11 +161,6 @@ export async function createSpace({
   if (error || !space) {
     throw error ?? new Error('Failed to create space');
   }
-
-  const seedFiles =
-    files && files.length > 0
-      ? files
-      : DEFAULT_SPACE_FILES.map((f) => ({ path: f.path, content: f.content }));
 
   await upsertSpaceFiles({
     ctx,
@@ -316,16 +314,25 @@ export async function upsertSpaceFiles({
     throw upsertError;
   }
 
+  const allFiles = await listSpaceFiles(spaceId, ctx);
+  const previewKind = detectSpaceRuntime(
+    allFiles
+      .filter((f) => f.content != null)
+      .map((f) => ({ path: f.path, content: f.content! })),
+  );
+
   await supabase
     .from('spaces')
-    .update({ updated_at: new Date().toISOString() })
+    .update({
+      updated_at: new Date().toISOString(),
+      preview_kind: previewKind,
+    })
     .eq('id', spaceId);
 
   if (!createVersion) {
     return { versionNumber: null };
   }
 
-  const allFiles = await listSpaceFiles(spaceId, ctx);
   const versionNumber = await createSpaceVersion({
     spaceId,
     organizationId,

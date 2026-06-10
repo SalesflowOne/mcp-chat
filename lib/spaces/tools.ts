@@ -75,7 +75,7 @@ export async function getSpaceTools(
 
     updateSpaceFiles: tool({
       description:
-        'Update one or more files in an AgentOps Space. Creates a new version snapshot. Use for revisions to HTML/CSS/JS. Requires spaceId from createSpace or the active Space.',
+        'Update one or more files in an AgentOps Space. Creates a new version snapshot. Use for revisions to HTML/CSS/JS or React/Vite projects (package.json, src/*, vite.config.js). Requires spaceId from createSpace or the active Space.',
       parameters: z.object({
         spaceId: z
           .string()

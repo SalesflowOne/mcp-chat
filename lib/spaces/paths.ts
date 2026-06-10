@@ -25,7 +25,10 @@ export function sanitizeSpacePath(raw: string): string | null {
 export function mimeTypeForPath(path: string): string {
   if (path.endsWith('.html') || path.endsWith('.htm')) return 'text/html';
   if (path.endsWith('.css')) return 'text/css';
-  if (path.endsWith('.js')) return 'text/javascript';
+  if (path.endsWith('.js') || path.endsWith('.mjs')) return 'text/javascript';
+  if (path.endsWith('.jsx')) return 'text/javascript';
+  if (path.endsWith('.ts')) return 'text/typescript';
+  if (path.endsWith('.tsx')) return 'text/typescript';
   if (path.endsWith('.json')) return 'application/json';
   if (path.endsWith('.svg')) return 'image/svg+xml';
   return 'text/plain';

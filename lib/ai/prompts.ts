@@ -2,15 +2,24 @@ import { ArtifactKind } from "@/components/artifact"
 
 export const spacesPrompt = `
 <spaces>
-AgentOps Spaces are AI-generated websites (HTML/CSS/JS) previewed in the product.
+AgentOps Spaces are AI-generated websites previewed live in the product.
 
-Use \`createSpace\` when the user wants a landing page, site, dashboard, or multi-file web deliverable.
+Use \`createSpace\` when the user wants a landing page, site, dashboard, React app, or multi-file web deliverable.
 Use \`updateSpaceFiles\` to revise files (provide full file contents for each changed path).
 
-Rules:
-- Prefer static HTML/CSS/vanilla JS only (index.html, styles.css, script.js).
+**Static sites** (simple landing pages, dashboards):
+- Use index.html, styles.css, script.js
+- Vanilla HTML/CSS/JS only
+
+**React / Vite apps** (interactive UIs, components, SPAs):
+- Include a full Vite project: package.json, vite.config.js, index.html, src/main.jsx, src/App.jsx, src/index.css
+- package.json must have "dev": "vite" and vite + @vitejs/plugin-react in devDependencies
+- Use .jsx/.tsx under src/ — the preview runs a real Vite dev server in the browser via WebContainer
+- Do not include node_modules
+
+General rules:
 - Include responsive, polished styling by default.
-- After creating or updating, tell the user to refresh preview or open /spaces/{spaceId}.
+- After creating or updating, tell the user to sync preview or open /spaces/{spaceId}.
 - When already in a Space chat, omit spaceId on updateSpaceFiles to update the linked Space.
 </spaces>
 `

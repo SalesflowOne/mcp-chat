@@ -31,78 +31,96 @@ export const streamText = async (
   ) as Message[]
 
   for (let steps = 0; steps < maxSteps; steps++) {
-    const cont = await new Promise<boolean>(async (resolve, reject) => {
-      const tools = await getTools()
-      console.log(">> Using tools", Object.keys(tools).join(", "))
-      const result = _streamText({
-        ...rest,
-        messages,
-        tools,
-        experimental_transform: [
-          smoothStream({
-            chunking: /\s*\S+\s*/m,
-            delayInMs: 0
-          })
-        ],
-        onFinish: async (event) => {
-          console.log(">> Finish reason", event.finishReason)
+    const cont = await new Promise<boolean>((resolve, reject) => {
+      let settled = false
+      const finish = (value: boolean) => {
+        if (settled) return
+        settled = true
+        resolve(value)
+      }
 
-          switch (event.finishReason) {
-            case "stop":
-            case "content-filter":
-              resolve(false)
-              break
-            case "error":
-              // On error, still try to append messages and stop the loop
-              console.log(">> Error occurred, stopping execution")
-              try {
-                if (event.response.messages.length > 0) {
-                  messages = appendResponseMessages({
-                    messages,
-                    responseMessages: event.response.messages,
-                  })
-                }
-                await rest.onFinish?.(event)
-              } catch (e) {
-                console.error("Error in onFinish handler:", e)
-              }
-              resolve(false)
-              break
-            case "length":
-            case "tool-calls":
-            case "other":
-            case "unknown":
-            default:
-              break
-          }
+      const fail = (error: unknown) => {
+        if (settled) return
+        settled = true
+        reject(error)
+      }
 
-          const assistantId = getTrailingMessageId({
-            messages: event.response.messages.filter(
-              (message) => message.role === "assistant"
-            ),
-          })
-
-          if (!assistantId) {
-            console.error("No assistant message found in response messages:", event.response.messages)
-            // Instead of throwing, just stop the loop
-            resolve(false)
-            return
-          }
-
-          messages = appendResponseMessages({
+      void (async () => {
+        try {
+          const tools = await getTools()
+          console.log(">> Using tools", Object.keys(tools).join(", "))
+          const result = _streamText({
+            ...rest,
             messages,
-            responseMessages: event.response.messages,
+            tools,
+            experimental_transform: [
+              smoothStream({
+                chunking: /\s*\S+\s*/m,
+                delayInMs: 0
+              })
+            ],
+            onFinish: async (event) => {
+              console.log(">> Finish reason", event.finishReason)
+
+              if (event.finishReason === "stop" || event.finishReason === "content-filter") {
+                finish(false)
+                return
+              }
+
+              if (event.finishReason === "error") {
+                console.log(">> Error occurred, stopping execution")
+                try {
+                  if (event.response.messages.length > 0) {
+                    messages = appendResponseMessages({
+                      messages,
+                      responseMessages: event.response.messages,
+                    })
+                  }
+                  await rest.onFinish?.(event)
+                } catch (e) {
+                  console.error("Error in onFinish handler:", e)
+                }
+                finish(false)
+                return
+              }
+
+              const assistantId = getTrailingMessageId({
+                messages: event.response.messages.filter(
+                  (message) => message.role === "assistant"
+                ),
+              })
+
+              if (!assistantId) {
+                console.error(
+                  "No assistant message found in response messages:",
+                  event.response.messages
+                )
+                finish(false)
+                return
+              }
+
+              messages = appendResponseMessages({
+                messages,
+                responseMessages: event.response.messages,
+              })
+              await rest.onFinish?.(event)
+              finish(true)
+            },
           })
-          await rest.onFinish?.(event)
-          resolve(true)
-        },
-      })
 
-      result.consumeStream()
+          result.consumeStream()
 
-      result.mergeIntoDataStream(dataStream, {
-        sendReasoning: true,
-      })
+          result.mergeIntoDataStream(dataStream, {
+            sendReasoning: true,
+          })
+        } catch (error) {
+          console.error("streamText step failed:", error)
+          fail(error)
+        }
+      })()
+    }).catch((error) => {
+      console.error("streamText step rejected:", error)
+      return false
     })
 
     if (!cont) {

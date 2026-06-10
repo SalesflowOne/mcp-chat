@@ -119,6 +119,16 @@ function PureMultimodalInput({
       e.stopPropagation();
     }
     
+    if (status !== 'ready') {
+      toast.error('Please wait for the model to finish its response!');
+      return;
+    }
+
+    if (authStatus === 'loading') {
+      toast.error('Checking authentication, please try again in a moment.');
+      return;
+    }
+
     // Check if user is authenticated
     if (authStatus === 'unauthenticated') {
       // Save current input to localStorage so it persists after auth
@@ -152,6 +162,7 @@ function PureMultimodalInput({
     authStatus,
     input,
     setIsSignInModalOpen,
+    status,
   ]);
 
   const uploadFile = async (file: File) => {
@@ -313,13 +324,14 @@ function PureMultimodalInput({
       </div>
 
       <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
-        {status === 'submitted' ? (
+        {status === 'submitted' || status === 'streaming' ? (
           <StopButton stop={stop} setMessages={setMessages} />
         ) : (
           <SendButton
             input={input}
             submitForm={submitForm}
             uploadQueue={uploadQueue}
+            status={status}
           />
         )}
       </div>
@@ -435,10 +447,12 @@ function PureSendButton({
   submitForm,
   input,
   uploadQueue,
+  status,
 }: {
   submitForm: () => void;
   input: string;
   uploadQueue: Array<string>;
+  status: UseChatHelpers['status'];
 }) {
   return (
     <Button
@@ -447,7 +461,9 @@ function PureSendButton({
       onClick={() => {
         submitForm();
       }}
-      disabled={input.length === 0 || uploadQueue.length > 0}
+      disabled={
+        input.length === 0 || uploadQueue.length > 0 || status !== 'ready'
+      }
     >
       <ArrowUpIcon size={14} />
     </Button>
@@ -458,5 +474,6 @@ const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
   if (prevProps.uploadQueue.length !== nextProps.uploadQueue.length)
     return false;
   if (prevProps.input !== nextProps.input) return false;
+  if (prevProps.status !== nextProps.status) return false;
   return true;
 });

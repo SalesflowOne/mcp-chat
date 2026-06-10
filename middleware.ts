@@ -29,15 +29,15 @@ const isPublicRoute = createRouteMatcher([
 
 const isAdminRoute = createRouteMatcher(['/admin(.*)']);
 
-const isProtectedApiRoute = createRouteMatcher(['/api/chat(.*)']);
-
 const clerkHandler = clerkMiddleware(
   async (auth, request) => {
     if (isPublicRoute(request)) {
       return;
     }
 
-    if (isProtectedApiRoute(request) || isAdminRoute(request)) {
+    // /api/chat handles auth itself and returns JSON 401 — do not use auth.protect()
+    // here or unauthenticated stream requests get HTML redirects and the client stays stuck.
+    if (isAdminRoute(request)) {
       await auth.protect();
     }
   },

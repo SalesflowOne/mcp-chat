@@ -67,9 +67,9 @@ export function Chat({
       onSpaceUpdated?.();
     },
     onError: (error) => {
-      // Check if error is a 401 unauthorized due to authentication
-      if (error instanceof Error && error.message.includes("401")) {
-        // This error is likely from the submitForm auth check, so we don't need to show an error
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("401") || message.toLowerCase().includes("unauthorized")) {
+        toast.error("Sign in to send messages.");
         return;
       }
       toast.error("An error occurred, please try again!");

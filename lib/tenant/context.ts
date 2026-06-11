@@ -9,7 +9,9 @@ import {
   syncClerkOrganizationMembership,
   upsertAppUserFromClerk,
 } from '@/lib/tenant/sync';
+import { resolveTenantViaRpc } from '@/lib/persistence/rpc';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { hasSupabaseServiceRole } from '@/lib/supabase/config';
 import type { AppUserRow, OrganizationRow } from '@/lib/supabase/types';
 
 export type TenantContext = {
@@ -39,6 +41,32 @@ export async function resolveTenantContext(): Promise<TenantContext | null> {
 
   if (!clerkUserId) {
     return null;
+  }
+
+  if (!hasSupabaseServiceRole()) {
+    const user = await currentUser();
+    const membership = user?.organizationMemberships?.find(
+      (m) => m.organization.id === (clerkOrgId ?? user?.organizationMemberships?.[0]?.organization.id),
+    );
+    const cookieStore = await cookies();
+
+    return resolveTenantViaRpc({
+      clerkUserId,
+      email:
+        user?.emailAddresses.find((e) => e.id === user.primaryEmailAddressId)
+          ?.emailAddress ??
+        user?.emailAddresses[0]?.emailAddress ??
+        '',
+      fullName:
+        user?.fullName ||
+        [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+        null,
+      avatarUrl: user?.imageUrl ?? null,
+      clerkOrgId: (await resolveActiveClerkOrgId(clerkOrgId)) ?? null,
+      clerkOrgName: membership?.organization.name ?? null,
+      clerkRole: membership?.role ?? null,
+      cookieOrgId: cookieStore.get(ACTIVE_ORG_COOKIE)?.value ?? null,
+    });
   }
 
   const appUser = await upsertAppUserFromClerk();

@@ -1,8 +1,24 @@
 
+export function hasSupabaseServiceRole(): boolean {
+  return Boolean(
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+      process.env.SUPABASE_SECRET_KEY?.trim(),
+  );
+}
+
+/** Anon key + shared persist secret (Postgres RPC) when service role is unavailable on Vercel. */
+export function isRpcPersistConfigured(): boolean {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() &&
+      process.env.AGENTOPS_PERSIST_SECRET?.trim(),
+  );
+}
+
 export function isSupabaseConfigured(): boolean {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
-      process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
+      (hasSupabaseServiceRole() || isRpcPersistConfigured()),
   );
 }
 

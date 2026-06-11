@@ -2,7 +2,16 @@ import 'server-only';
 
 import type { UIMessage } from 'ai';
 
+import {
+  getChatByIdViaRpc,
+  getChatsByUserViaRpc,
+  getMessagesByChatIdViaRpc,
+  isRpcPersistConfigured,
+  saveChatViaRpc,
+  saveMessagesViaRpc,
+} from '@/lib/persistence/rpc';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { hasSupabaseServiceRole } from '@/lib/supabase/config';
 import { requireOrgAccess } from '@/lib/tenant/auth';
 import type { TenantContext } from '@/lib/tenant/context';
 import type { ChatThreadRow, ChatMessageRow } from '@/lib/supabase/types';
@@ -97,6 +106,11 @@ export async function saveChatSupabase({
   organizationId: string;
   title: string;
 }) {
+  if (!hasSupabaseServiceRole() && isRpcPersistConfigured()) {
+    await saveChatViaRpc({ id, appUserId, organizationId, title });
+    return;
+  }
+
   await requireOrgAccess(organizationId);
   const supabase = getSupabaseAdminClient();
 
@@ -123,6 +137,12 @@ export async function getChatByIdSupabase({
   id: string;
   clerkUserId: string;
 }): Promise<LegacyChat | null> {
+  if (!hasSupabaseServiceRole() && isRpcPersistConfigured()) {
+    const data = await getChatByIdViaRpc({ id, clerkUserId });
+    if (!data) return null;
+    return toLegacyChat(data, data.user_id ?? '');
+  }
+
   const ctx = await getContextForThread(id, clerkUserId);
   const supabase = getSupabaseAdminClient();
 
@@ -151,6 +171,11 @@ export async function getChatsByUserIdSupabase({
   appUserId: string;
   organizationId: string;
 }): Promise<LegacyChat[]> {
+  if (!hasSupabaseServiceRole() && isRpcPersistConfigured()) {
+    const data = await getChatsByUserViaRpc({ appUserId, organizationId });
+    return data.map((row) => toLegacyChat(row, appUserId));
+  }
+
   await requireOrgAccess(organizationId);
   const supabase = getSupabaseAdminClient();
 
@@ -200,6 +225,19 @@ export async function saveMessagesSupabase({
   organizationId: string;
   appUserId: string;
 }) {
+  if (!hasSupabaseServiceRole() && isRpcPersistConfigured()) {
+    await saveMessagesViaRpc({
+      organizationId,
+      appUserId,
+      messages: messages.map((m) => ({
+        ...m,
+        createdAt: m.createdAt.toISOString(),
+        content: extractTextFromParts(m.parts),
+      })),
+    });
+    return;
+  }
+
   await requireOrgAccess(organizationId);
   const supabase = getSupabaseAdminClient();
 
@@ -232,6 +270,11 @@ export async function getMessagesByChatIdSupabase({
   id: string;
   clerkUserId: string;
 }): Promise<LegacyDBMessage[]> {
+  if (!hasSupabaseServiceRole() && isRpcPersistConfigured()) {
+    const data = await getMessagesByChatIdViaRpc({ id, clerkUserId });
+    return data.map(toLegacyMessage);
+  }
+
   await getContextForThread(id, clerkUserId);
   const supabase = getSupabaseAdminClient();
 

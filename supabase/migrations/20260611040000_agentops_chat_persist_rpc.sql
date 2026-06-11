@@ -1,0 +1,5 @@
+-- AgentOps chat persistence via SECURITY DEFINER RPC (anon key + AGENTOPS_PERSIST_SECRET on Vercel).
+-- Set app_config.agentops_persist_secret and Vercel AGENTOPS_PERSIST_SECRET to the same value.
+-- RPC bodies: agentops_upsert_app_user, agentops_ensure_default_org, agentops_sync_clerk_org,
+-- agentops_save_chat, agentops_save_messages, agentops_get_chats_by_user, agentops_get_chat_by_id,
+-- agentops_get_messages_by_chat, agentops_get_org_if_member (applied on One OS Supabase).

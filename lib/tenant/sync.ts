@@ -124,7 +124,7 @@ export async function ensureDefaultOrganization(
     .insert({
       name,
       slug,
-      owner_id: appUser.id,
+      owner_id: null,
       status: 'active',
     })
     .select('*')
@@ -146,14 +146,6 @@ export async function ensureDefaultOrganization(
   if (memberError) {
     throw memberError;
   }
-
-  await supabase.from('audit_logs').insert({
-    organization_id: org.id,
-    actor_id: appUser.id,
-    action: 'organization.created',
-    details: `organization:${org.id}`,
-    metadata: { source: 'default_workspace', target_type: 'organization' },
-  });
 
   return org;
 }
@@ -182,7 +174,7 @@ export async function syncClerkOrganizationMembership(
         clerk_org_id: clerkOrgId,
         name: clerkOrgName,
         slug,
-        owner_id: appUser.id,
+        owner_id: null,
         status: 'active',
       })
       .select('*')

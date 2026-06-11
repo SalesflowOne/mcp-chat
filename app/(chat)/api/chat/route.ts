@@ -12,8 +12,8 @@ import {
   getMostRecentUserMessage,
   getTrailingMessageId,
 } from "@/lib/utils"
-import { getEffectiveSession, shouldPersistData } from "@/lib/auth-utils"
-import { canPersistChatSession } from "@/lib/session-persist"
+import { getEffectiveSession } from "@/lib/auth-utils"
+import { resolvePersistTenant } from "@/lib/tenant/persist"
 import { userApprovedDestructiveActions } from "@/lib/approvals/detect"
 import { MCPSessionManager } from "@/mods/mcp-client"
 import {
@@ -72,8 +72,7 @@ export async function POST(request: Request) {
     }
 
     const clerkUserId = session.clerkUserId
-    const appUserId = session.appUserId
-    const organizationId = session.organizationId
+    const tenant = await resolvePersistTenant()
 
     const userMessage = getMostRecentUserMessage(messages)
 
@@ -81,9 +80,9 @@ export async function POST(request: Request) {
       return new Response("No user message found", { status: 400 })
     }
 
-    const persistChat = shouldPersistData() && canPersistChatSession(session);
+    const persistChat = Boolean(tenant)
 
-    if (persistChat) {
+    if (persistChat && tenant) {
       try {
         const chat = await getChatById({ id, clerkUserId })
 
@@ -94,11 +93,11 @@ export async function POST(request: Request) {
 
           await saveChat({
             id,
-            userId: appUserId,
+            userId: tenant.appUser.id,
             title,
-            organizationId,
+            organizationId: tenant.organizationId,
           })
-        } else if (chat.userId !== appUserId) {
+        } else if (chat.userId !== tenant.appUser.id) {
           return new Response("Unauthorized", { status: 401 })
         }
 
@@ -113,8 +112,8 @@ export async function POST(request: Request) {
               createdAt: new Date(),
             },
           ],
-          organizationId,
-          appUserId,
+          organizationId: tenant.organizationId,
+          appUserId: tenant.appUser.id,
         })
       } catch (persistError) {
         console.error(
@@ -173,7 +172,7 @@ export async function POST(request: Request) {
               }
             },
             onFinish: async ({ response, usage }) => {
-              if (appUserId && persistChat) {
+              if (tenant && persistChat) {
                 try {
                   const assistantId = getTrailingMessageId({
                     messages: response.messages.filter(
@@ -202,17 +201,17 @@ export async function POST(request: Request) {
                         createdAt: new Date(),
                       },
                     ],
-                    organizationId,
-                    appUserId,
+                    organizationId: tenant.organizationId,
+                    appUserId: tenant.appUser.id,
                   })
 
-                  if (organizationId) {
+                  if (tenant.organizationId) {
                     const { recordUsageEvent } = await import(
                       '@/lib/data/chat-supabase'
                     )
                     await recordUsageEvent({
-                      organizationId,
-                      userId: appUserId,
+                      organizationId: tenant.organizationId,
+                      userId: tenant.appUser.id,
                       eventType: 'chat.completion',
                       model: selectedChatModel,
                       inputTokens: usage?.promptTokens ?? 0,

@@ -19,6 +19,21 @@ export type TenantContext = {
   organizationId: string;
 };
 
+async function resolveActiveClerkOrgId(
+  clerkOrgId: string | null | undefined,
+): Promise<string | null> {
+  if (clerkOrgId) {
+    return clerkOrgId;
+  }
+
+  const user = await currentUser();
+  if (!user) {
+    return null;
+  }
+
+  return user.organizationMemberships?.[0]?.organization.id ?? null;
+}
+
 export async function resolveTenantContext(): Promise<TenantContext | null> {
   const { userId: clerkUserId, orgId: clerkOrgId } = await auth();
 
@@ -30,15 +45,16 @@ export async function resolveTenantContext(): Promise<TenantContext | null> {
   const supabase = getSupabaseAdminClient();
 
   let organization: OrganizationRow | null = null;
+  const activeClerkOrgId = await resolveActiveClerkOrgId(clerkOrgId);
 
-  if (clerkOrgId) {
+  if (activeClerkOrgId) {
     const user = await currentUser();
     const membership = user?.organizationMemberships?.find(
-      (m) => m.organization.id === clerkOrgId,
+      (m) => m.organization.id === activeClerkOrgId,
     );
 
     organization = await syncClerkOrganizationMembership(
-      clerkOrgId,
+      activeClerkOrgId,
       membership?.organization.name ?? 'Organization',
       clerkUserId,
       membership?.role ?? 'member',

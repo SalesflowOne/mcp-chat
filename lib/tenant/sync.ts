@@ -134,10 +134,12 @@ export async function ensureDefaultOrganization(
     throw orgError ?? new Error('Failed to create default organization');
   }
 
+  const personalClerkOrgId = `personal:${appUser.clerk_user_id}`;
   const { error: memberError } = await supabase.from('organization_members').insert({
     organization_id: org.id,
     user_id: appUser.id,
     clerk_user_id: appUser.clerk_user_id,
+    clerk_org_id: personalClerkOrgId,
     role: 'owner',
   });
 

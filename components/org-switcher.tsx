@@ -8,7 +8,7 @@ export function OrgSwitcher() {
       hidePersonal
       afterCreateOrganizationUrl="/"
       afterLeaveOrganizationUrl="/"
-      afterSelectOrganizationUrl="/"
+      afterSelectOrganizationUrl="/?org_switched=1"
       appearance={{
         elements: {
           rootBox: 'w-full',

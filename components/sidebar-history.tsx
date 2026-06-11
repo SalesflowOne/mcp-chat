@@ -159,11 +159,23 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     mutate,
   } = useSWR<Array<Chat>>(user ? '/api/history' : null, fetcher, {
     fallbackData: [],
+    revalidateOnFocus: true,
+    refreshInterval: 30_000,
   });
 
   useEffect(() => {
     mutate();
   }, [pathname, mutate]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        mutate();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [mutate]);
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);

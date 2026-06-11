@@ -1,34 +1,34 @@
 'use client';
 
+import { useAuth } from '@clerk/nextjs';
 import { useEffect } from 'react';
 
-import {
-  buildAccountPortalSignInUrl,
-  buildAccountPortalSignUpUrl,
-  isClerkSatelliteApp,
-} from '@/lib/clerk-config';
+import { useSatelliteAuthUrl } from '@/hooks/use-satellite-auth-url';
+import { isClerkSatelliteApp } from '@/lib/clerk-config';
 
 type SatelliteAuthRedirectProps = {
   mode: 'sign-in' | 'sign-up';
+  returnPath?: string;
 };
 
 /**
- * Sends users to the agentops Account Portal with force redirect back to agentops.one.
- * Does not use buildSignInUrl() — that can follow Clerk instance paths to oneaccess.one.
+ * Sends users to the shared Account Portal with Clerk's satellite sync trigger so
+ * the session is recognized when they return to agentops.one.
  */
-export function SatelliteAuthRedirect({ mode }: SatelliteAuthRedirectProps) {
+export function SatelliteAuthRedirect({
+  mode,
+  returnPath = '/',
+}: SatelliteAuthRedirectProps) {
+  const { isLoaded } = useAuth();
+  const targetUrl = useSatelliteAuthUrl(mode, returnPath);
+
   useEffect(() => {
-    if (!isClerkSatelliteApp()) {
+    if (!isClerkSatelliteApp() || !isLoaded) {
       return;
     }
 
-    const targetUrl =
-      mode === 'sign-in'
-        ? buildAccountPortalSignInUrl('/')
-        : buildAccountPortalSignUpUrl('/');
-
     window.location.replace(targetUrl);
-  }, [mode]);
+  }, [isLoaded, mode, returnPath, targetUrl]);
 
   return (
     <div className="flex min-h-dvh w-full flex-col items-center justify-center gap-3 p-4 text-center">

@@ -13,11 +13,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import {
-  buildAccountPortalSignInUrl,
-  buildAccountPortalSignUpUrl,
-  isClerkSatelliteApp,
-} from '@/lib/clerk-config';
+import { useSatelliteAuthUrl } from '@/hooks/use-satellite-auth-url';
+import { isClerkSatelliteApp } from '@/lib/clerk-config';
 
 interface SignInModalProps {
   isOpen: boolean;
@@ -25,12 +22,10 @@ interface SignInModalProps {
 }
 
 export function SignInModal({ isOpen, onClose }: SignInModalProps) {
-  const signInHref = isClerkSatelliteApp()
-    ? buildAccountPortalSignInUrl('/')
-    : '/sign-in';
-  const signUpHref = isClerkSatelliteApp()
-    ? buildAccountPortalSignUpUrl('/')
-    : '/sign-up';
+  const satelliteSignInHref = useSatelliteAuthUrl('sign-in', '/');
+  const satelliteSignUpHref = useSatelliteAuthUrl('sign-up', '/');
+  const signInHref = isClerkSatelliteApp() ? satelliteSignInHref : '/sign-in';
+  const signUpHref = isClerkSatelliteApp() ? satelliteSignUpHref : '/sign-up';
 
   return (
     <AlertDialog

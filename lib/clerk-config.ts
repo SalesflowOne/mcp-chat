@@ -93,8 +93,11 @@ export function buildSatelliteReturnUrl(path = '/'): string {
 
 export function appendSatelliteSyncParam(url: string): string {
   const parsed = new URL(url);
-  if (!parsed.searchParams.has('__clerk_sync')) {
-    parsed.searchParams.set('__clerk_sync', '1');
+  if (
+    !parsed.searchParams.has('__clerk_synced') &&
+    !parsed.searchParams.has('__clerk_sync')
+  ) {
+    parsed.searchParams.set('__clerk_synced', 'false');
   }
   return parsed.toString();
 }
@@ -154,8 +157,8 @@ export function getClerkMiddlewareOptions() {
   const proxyUrl = getClerkProxyUrl();
   const options: Record<string, unknown> = {
     isSatellite: true,
-    signInUrl: getClerkSatelliteSignInPath(),
-    signUpUrl: getClerkSatelliteSignUpPath(),
+    signInUrl: getClerkPrimarySignInUrl(),
+    signUpUrl: getClerkPrimarySignUpUrl(),
     satelliteAutoSync: false,
     frontendApiProxy: {
       enabled: true,

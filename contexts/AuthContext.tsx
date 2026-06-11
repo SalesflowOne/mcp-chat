@@ -59,10 +59,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthSessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const syncFromServerSession = useCallback(async () => {
+    try {
+      const response = await fetch('/api/auth/session', {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      if (!response.ok) {
+        return false;
+      }
+      const payload = (await response.json()) as {
+        user?: AuthSessionUser | null;
+      };
+      if (!payload.user) {
+        return false;
+      }
+      setUser(payload.user);
+      setIsLoading(false);
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!isSupabaseAuthConfigured()) {
-      setSession(null);
-      setUser(null);
+      const synced = await syncFromServerSession();
+      if (!synced) {
+        setSession(null);
+        setUser(null);
+      }
       setIsLoading(false);
       return;
     }
@@ -74,10 +100,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { session: nextSession },
     } = await supabase.auth.getSession();
-    setSession(nextSession);
-    setUser(mapUser(nextUser));
+
+    if (nextUser) {
+      setSession(nextSession);
+      setUser(mapUser(nextUser));
+      setIsLoading(false);
+      return;
+    }
+
+    const synced = await syncFromServerSession();
+    if (!synced) {
+      setSession(null);
+      setUser(null);
+    }
     setIsLoading(false);
-  }, []);
+  }, [syncFromServerSession]);
 
   useEffect(() => {
     if (!isSupabaseAuthConfigured()) {

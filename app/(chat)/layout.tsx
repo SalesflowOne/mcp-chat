@@ -42,6 +42,7 @@ async function LayoutContent({ children }: { children: React.ReactNode }) {
       isAuthDisabled={isAuthDisabled}
       isPersistenceDisabled={isPersistenceDisabled}
       guestSession={guestSession}
+      serverSession={session}
     >
       <ActiveSpaceProvider>
       <SidebarProvider defaultOpen={!isCollapsed}>

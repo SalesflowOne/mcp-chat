@@ -9,28 +9,6 @@ import {
 
 const isAuthDisabled = process.env.DISABLE_AUTH === 'true';
 
-const PUBLIC_PATHS = [
-  '/login',
-  '/register',
-  '/signup',
-  '/sign-in',
-  '/sign-up',
-  '/forgot-password',
-  '/reset-password',
-  '/auth/callback',
-  '/healthcheck',
-  '/api/public',
-  '/share/spaces',
-  '/opengraph-image',
-  '/twitter-image',
-];
-
-function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`),
-  );
-}
-
 export async function middleware(request: NextRequest) {
   if (isAuthDisabled) {
     return NextResponse.next();
@@ -81,17 +59,6 @@ export async function middleware(request: NextRequest) {
   ) {
     const returnTo = request.nextUrl.searchParams.get('returnTo') ?? '/';
     return NextResponse.redirect(new URL(returnTo, request.url));
-  }
-
-  if (!isPublicPath(pathname) && pathname.startsWith('/api/') && !user) {
-    const isChatApi =
-      pathname.startsWith('/api/chat') ||
-      pathname.startsWith('/api/history') ||
-      pathname.startsWith('/api/document') ||
-      pathname.startsWith('/api/vote');
-    if (isChatApi) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
   }
 
   return response;

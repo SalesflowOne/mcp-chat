@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 
-import { useAuth } from '@/hooks/useAuth';
+import { signOutAction } from '@/app/(auth)/actions';
 import type { User } from '@/types/user';
 import {
   DropdownMenu,
@@ -22,7 +22,6 @@ import {
 
 export function SidebarUserNav({ user }: { user: User }) {
   const { setTheme, theme } = useTheme();
-  const { signOut } = useAuth();
 
   return (
     <SidebarMenu>
@@ -68,13 +67,11 @@ export function SidebarUserNav({ user }: { user: User }) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <button
-                type="button"
-                className="w-full cursor-pointer"
-                onClick={() => void signOut()}
-              >
-                Sign out
-              </button>
+              <form action={signOutAction} className="w-full">
+                <button type="submit" className="w-full cursor-pointer text-left">
+                  Sign out
+                </button>
+              </form>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <div className="text-xs text-muted-foreground px-2 py-1">

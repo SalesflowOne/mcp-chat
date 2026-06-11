@@ -25,33 +25,38 @@ export async function getCurrentUser(): Promise<AuthSessionUser | null> {
     return null;
   }
 
-  const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = await getSupabaseServerClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
-  if (error || !user) {
+    if (error || !user) {
+      return null;
+    }
+
+    const meta = user.user_metadata ?? {};
+    const firstName = meta.first_name ?? meta.firstName ?? null;
+    const lastName = meta.last_name ?? meta.lastName ?? null;
+    const displayName =
+      (meta.display_name ??
+        meta.full_name ??
+        meta.name ??
+        [firstName, lastName].filter(Boolean).join(' ')) ||
+      user.email?.split('@')[0] ||
+      'User';
+
+    return {
+      id: user.id,
+      email: user.email ?? '',
+      name: displayName,
+      avatarUrl: meta.avatar_url ?? meta.avatarUrl ?? null,
+    };
+  } catch (error) {
+    console.error('getCurrentUser failed', error);
     return null;
   }
-
-  const meta = user.user_metadata ?? {};
-  const firstName = meta.first_name ?? meta.firstName ?? null;
-  const lastName = meta.last_name ?? meta.lastName ?? null;
-  const displayName =
-    (meta.display_name ??
-      meta.full_name ??
-      meta.name ??
-      [firstName, lastName].filter(Boolean).join(' ')) ||
-    user.email?.split('@')[0] ||
-    'User';
-
-  return {
-    id: user.id,
-    email: user.email ?? '',
-    name: displayName,
-    avatarUrl: meta.avatar_url ?? meta.avatarUrl ?? null,
-  };
 }
 
 export async function getProfile(userId: string): Promise<AuthProfile | null> {

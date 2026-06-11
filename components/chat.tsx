@@ -69,6 +69,11 @@ export function Chat({
     experimental_throttle: 100,
     sendExtraMessageFields: true,
     generateId: generateUUID,
+    fetch: (input, init) =>
+      fetch(input, {
+        ...init,
+        credentials: 'include',
+      }),
     onFinish: () => {
       mutate("/api/history");
       onSpaceUpdated?.();

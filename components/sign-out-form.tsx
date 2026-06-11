@@ -1,14 +1,12 @@
-'use client';
-
-import { useAuth } from '@/hooks/useAuth';
+import { signOutAction } from '@/app/(auth)/actions';
 import { Button } from '@/components/ui/button';
 
 export function SignOutForm() {
-  const { signOut } = useAuth();
-
   return (
-    <Button type="button" variant="outline" onClick={() => void signOut()}>
-      Sign out
-    </Button>
+    <form action={signOutAction}>
+      <Button type="submit" variant="outline">
+        Sign out
+      </Button>
+    </form>
   );
 }

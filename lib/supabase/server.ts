@@ -6,15 +6,15 @@ import { cookies } from 'next/headers';
 import {
   getSupabaseAnonKey,
   getSupabaseUrl,
-  isSupabaseConfigured,
+  isSupabaseAuthConfigured,
 } from '@/lib/supabase/config';
 
 import type { Database } from '@/lib/supabase/types';
 
-/** Server-side anon client (no tenant bypass). Prefer admin client after auth checks. */
+/** Server-side Supabase client for Auth (anon key + session cookies). */
 export async function getSupabaseServerClient() {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase is not configured');
+  if (!isSupabaseAuthConfigured()) {
+    throw new Error('Supabase Auth is not configured');
   }
 
   const cookieStore = await cookies();
@@ -30,7 +30,7 @@ export async function getSupabaseServerClient() {
             cookieStore.set(name, value, options);
           }
         } catch {
-          // Called from a Server Component — ignore.
+          // Called from a Server Component — middleware handles refresh.
         }
       },
     },

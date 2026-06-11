@@ -69,10 +69,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const supabase = createSupabaseBrowserClient();
     const {
+      data: { user: nextUser },
+    } = await supabase.auth.getUser();
+    const {
       data: { session: nextSession },
     } = await supabase.auth.getSession();
     setSession(nextSession);
-    setUser(mapUser(nextSession?.user ?? null));
+    setUser(mapUser(nextUser));
     setIsLoading(false);
   }, []);
 
@@ -87,9 +90,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange(async () => {
+      const {
+        data: { user: nextUser },
+      } = await supabase.auth.getUser();
+      const {
+        data: { session: nextSession },
+      } = await supabase.auth.getSession();
       setSession(nextSession);
-      setUser(mapUser(nextSession?.user ?? null));
+      setUser(mapUser(nextUser));
       setIsLoading(false);
     });
 

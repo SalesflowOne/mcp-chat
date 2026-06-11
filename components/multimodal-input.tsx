@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 import { useEffectiveSession } from '@/hooks/use-effective-session';
+import { useAuthContext } from '@/components/session-provider';
 import { SignInModal } from './sign-in-modal';
 
 import { ArrowUpIcon, PaperclipIcon, StopIcon } from './icons';
@@ -112,6 +113,7 @@ function PureMultimodalInput({
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   const [appSelectorOpen, setAppSelectorOpen] = useState(false);
 
+  const { isSignedIn } = useAuthContext();
   const { data: session, status: authStatus } = useEffectiveSession();
   
   const submitForm = useCallback((e?: React.FormEvent) => {
@@ -126,12 +128,11 @@ function PureMultimodalInput({
       return;
     }
 
-    if (!session?.user) {
+    if (!isSignedIn && !session?.user) {
       if (authStatus === 'loading') {
         return;
       }
 
-      // Save current input to localStorage so it persists after auth
       setLocalStorageInput(input);
       setIsSignInModalOpen(true);
       return;
@@ -159,6 +160,7 @@ function PureMultimodalInput({
     chatId,
     authStatus,
     input,
+    isSignedIn,
     session,
     setIsSignInModalOpen,
     status,
@@ -353,8 +355,10 @@ function PureAttachmentsButton({
   status: UseChatHelpers['status'];
   setSignInModalOpen: (isOpen: boolean) => void;
 }) {
+  const { isSignedIn } = useAuthContext();
   const { data: session, status: authStatus } = useEffectiveSession();
-  const isUnauthenticated = !session?.user && authStatus !== 'loading';
+  const isUnauthenticated =
+    !isSignedIn && !session?.user && authStatus !== 'loading';
   
   return (
     <Button

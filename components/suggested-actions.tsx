@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Button } from './ui/button';
 import { memo, useState } from 'react';
 import { useEffectiveSession } from '@/hooks/use-effective-session';
+import { useAuthContext } from '@/components/session-provider';
 import { UseChatHelpers } from '@ai-sdk/react';
 import { SignInModal } from './sign-in-modal';
 import { useIsMobile } from '../hooks/use-mobile';
@@ -24,6 +25,7 @@ interface SuggestedAction {
 
 function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
+  const { isSignedIn } = useAuthContext();
   const { data: session, status: authStatus } = useEffectiveSession();
   const isMobile = useIsMobile();
   
@@ -32,7 +34,7 @@ function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!session?.user && authStatus !== 'loading') {
+    if (!isSignedIn && !session?.user && authStatus !== 'loading') {
       try {
         // Save action text to localStorage as a JSON string so useLocalStorage can parse it
         localStorage.setItem('input', JSON.stringify(actionText));

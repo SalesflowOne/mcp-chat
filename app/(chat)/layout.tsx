@@ -38,12 +38,21 @@ async function LayoutContent({ children }: { children: React.ReactNode }) {
   const isSignedIn = !!session?.user;
 
   return (
-    <SessionProvider
-      isAuthDisabled={isAuthDisabled}
-      isPersistenceDisabled={isPersistenceDisabled}
-      guestSession={guestSession}
-      serverSession={session}
-    >
+    <>
+      {isSignedIn && session ? (
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__AGENTOPS_SESSION__=${JSON.stringify(session).replace(/</g, '\\u003c')};`,
+          }}
+        />
+      ) : null}
+      <SessionProvider
+        isAuthDisabled={isAuthDisabled}
+        isPersistenceDisabled={isPersistenceDisabled}
+        guestSession={guestSession}
+        isSignedIn={isSignedIn}
+        serverSession={session}
+      >
       <ActiveSpaceProvider>
       <SidebarProvider defaultOpen={!isCollapsed}>
         {isSignedIn ? (
@@ -59,6 +68,7 @@ async function LayoutContent({ children }: { children: React.ReactNode }) {
         )}
       </SidebarProvider>
       </ActiveSpaceProvider>
-    </SessionProvider>
+      </SessionProvider>
+    </>
   );
 }

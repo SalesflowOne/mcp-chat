@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthContext } from '@/components/session-provider';
+import { getEmbeddedSession } from '@/lib/auth/embedded-session';
 import { SESSION_DURATION_MS } from '@/lib/constants';
 import type { AppSession } from '@/lib/auth-session';
 
@@ -39,16 +40,21 @@ function withExpires(session: AppSession): AppSession {
 }
 
 export function useEffectiveSession() {
-  const { isAuthDisabled, guestSession, serverSession } = useAuthContext();
+  const { isAuthDisabled, guestSession, isSignedIn, serverSession } =
+    useAuthContext();
   const { user, isLoading } = useAuth();
   const [authTimedOut, setAuthTimedOut] = useState(false);
   const [fetchedSession, setFetchedSession] = useState<AppSession | null>(null);
+  const [embeddedSession] = useState(() => getEmbeddedSession());
 
-  const resolvedServerSession =
-    serverSession?.user ? serverSession : fetchedSession;
+  const resolvedServerSession = serverSession?.user
+    ? serverSession
+    : embeddedSession?.user
+      ? embeddedSession
+      : fetchedSession;
 
   useEffect(() => {
-    if (serverSession?.user) {
+    if (serverSession?.user || embeddedSession?.user) {
       return;
     }
     let cancelled = false;
@@ -60,7 +66,7 @@ export function useEffectiveSession() {
     return () => {
       cancelled = true;
     };
-  }, [serverSession]);
+  }, [serverSession, embeddedSession]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -84,7 +90,24 @@ export function useEffectiveSession() {
     };
   }
 
-  // Server session (layout prop or /api/auth/session) — don't block chat on client auth lag.
+  // Server layout rendered the signed-in shell — never report unauthenticated.
+  if (isSignedIn) {
+    if (resolvedServerSession?.user) {
+      return {
+        data: withExpires(resolvedServerSession),
+        status: 'authenticated' as const,
+        update: () => Promise.resolve(null),
+      };
+    }
+
+    return {
+      data: null,
+      status: 'authenticated' as const,
+      update: () => Promise.resolve(null),
+    };
+  }
+
+  // Server session (layout prop, embedded script, or /api/auth/session).
   if (resolvedServerSession?.user) {
     return {
       data: withExpires(resolvedServerSession),

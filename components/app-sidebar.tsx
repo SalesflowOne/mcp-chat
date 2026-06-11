@@ -30,7 +30,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 const NAV_ITEMS = [
-  { href: '/connectors', label: 'Connectors', icon: Plug },
+  { href: '/connectors', label: 'Integrations', icon: Plug },
   { href: '/spaces', label: 'Spaces', icon: LayoutTemplate },
   { href: '/playbooks', label: 'Playbooks', icon: BookOpen },
 ] as const;

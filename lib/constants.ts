@@ -76,3 +76,25 @@ export const STARTER_CONNECTOR_SLUGS = [
   "airtable",
   "google_sheets",
 ] as const;
+
+/** Popular integrations tab — Viktor-style curated grid */
+export const POPULAR_INTEGRATION_SLUGS = [
+  "google_ads",
+  "linear",
+  "vercel",
+  "github",
+  "openai",
+  "notion",
+  "slack",
+  "stripe",
+  "gmail",
+  "google_calendar",
+  "hubspot",
+  "airtable",
+  "clerk",
+  "posthog",
+  "sentry",
+  "datadog",
+  "intercom",
+  "quickbooks",
+] as const;

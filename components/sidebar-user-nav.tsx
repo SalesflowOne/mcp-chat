@@ -52,7 +52,7 @@ export function SidebarUserNav({ user }: { user: User }) {
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <a href="/connectors" className="w-full cursor-pointer">
-                Connectors
+                Integrations
               </a>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>

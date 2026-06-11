@@ -1,0 +1,16 @@
+import type { AppSession } from '@/lib/auth-session';
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** True when chat history can be saved to Supabase for this session. */
+export function canPersistChatSession(session: AppSession | null): boolean {
+  if (!session?.organizationId || !session.appUserId) {
+    return false;
+  }
+  const orgId = session.organizationId;
+  if (orgId === 'default' || orgId === 'guest') {
+    return false;
+  }
+  return UUID_RE.test(orgId);
+}

@@ -114,6 +114,11 @@ export const streamText = async (
           })
         } catch (error) {
           console.error("streamText step failed:", error)
+          dataStream.writeMessageAnnotation({
+            type: "error",
+            message:
+              error instanceof Error ? error.message : "Model request failed",
+          })
           fail(error)
         }
       })()

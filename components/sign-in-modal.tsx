@@ -1,9 +1,10 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 
+import { AgentOpsLogo } from '@/components/agentops-logo';
 import { SatelliteAuthLink } from '@/components/auth/satellite-auth-link';
+import { APP_NAME } from '@/lib/constants';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -65,21 +66,14 @@ export function SignInModal({ isOpen, onClose }: SignInModalProps) {
 
         <div className="flex flex-col items-center text-center justify-center flex-1 w-full">
           <div className="mb-6">
-            <Image
-              src="/images/pipedream.svg"
-              alt="Pipedream"
-              width={180}
-              height={40}
-              priority
-              className="dark:invert"
-            />
+            <AgentOpsLogo />
           </div>
 
           <AlertDialogHeader className="text-center mb-6 w-full">
             <AlertDialogTitle className="text-xl" />
             <AlertDialogDescription className="mt-2 text-center text-md">
-              Sign in to use MCP Chat with your connected accounts and chat
-              history.
+              Sign in to {APP_NAME} to connect your tools, save chat history, and
+              run automations across your stack.
             </AlertDialogDescription>
           </AlertDialogHeader>
 

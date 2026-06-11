@@ -13,6 +13,7 @@ import {
   getTrailingMessageId,
 } from "@/lib/utils"
 import { getEffectiveSession, shouldPersistData } from "@/lib/auth-utils"
+import { canPersistChatSession } from "@/lib/session-persist"
 import { userApprovedDestructiveActions } from "@/lib/approvals/detect"
 import { MCPSessionManager } from "@/mods/mcp-client"
 import {
@@ -80,41 +81,47 @@ export async function POST(request: Request) {
       return new Response("No user message found", { status: 400 })
     }
 
-    // Only check/save chat and messages if persistence is enabled
-    if (shouldPersistData()) {
-      const chat = await getChatById({ id, clerkUserId })
+    const persistChat = shouldPersistData() && canPersistChatSession(session);
 
-      if (!chat) {
-        const title = await generateTitleFromUserMessage({
-          message: userMessage,
-        })
+    if (persistChat) {
+      try {
+        const chat = await getChatById({ id, clerkUserId })
 
-        await saveChat({
-          id,
-          userId: appUserId,
-          title,
-          organizationId,
-        })
-      } else {
-        if (chat.userId !== appUserId) {
+        if (!chat) {
+          const title = await generateTitleFromUserMessage({
+            message: userMessage,
+          })
+
+          await saveChat({
+            id,
+            userId: appUserId,
+            title,
+            organizationId,
+          })
+        } else if (chat.userId !== appUserId) {
           return new Response("Unauthorized", { status: 401 })
         }
-      }
 
-      await saveMessages({
-        messages: [
-          {
-            chatId: id,
-            id: userMessage.id,
-            role: "user",
-            parts: userMessage.parts,
-            attachments: userMessage.experimental_attachments ?? [],
-            createdAt: new Date(),
-          },
-        ],
-        organizationId,
-        appUserId,
-      })
+        await saveMessages({
+          messages: [
+            {
+              chatId: id,
+              id: userMessage.id,
+              role: "user",
+              parts: userMessage.parts,
+              attachments: userMessage.experimental_attachments ?? [],
+              createdAt: new Date(),
+            },
+          ],
+          organizationId,
+          appUserId,
+        })
+      } catch (persistError) {
+        console.error(
+          "Chat persistence failed; continuing without saving history",
+          persistError,
+        )
+      }
     }
 
     const allowDestructive = userApprovedDestructiveActions(messages)
@@ -137,7 +144,13 @@ export async function POST(request: Request) {
             experimental_transform: smoothStream({ chunking: "word" }),
             experimental_generateMessageId: generateUUID,
             getTools: async () => {
-              const mcpTools = await mcpSession.tools({ useCache: false })
+              let mcpTools = {}
+              try {
+                mcpTools = await mcpSession.tools({ useCache: false })
+              } catch (mcpError) {
+                console.error("MCP tools unavailable; continuing without connectors", mcpError)
+              }
+
               const { getArtifactTools } = await import('@/lib/artifacts/tools')
               const artifactTools = getArtifactTools({
                 session: session!,
@@ -147,15 +160,20 @@ export async function POST(request: Request) {
               if (!includeSpaces) {
                 return { ...mcpTools, ...artifactTools }
               }
-              const { getSpaceTools } = await import('@/lib/spaces/tools')
-              const spaceTools = await getSpaceTools({
-                chatThreadId: id,
-                spaceId,
-              })
-              return { ...mcpTools, ...artifactTools, ...spaceTools }
+              try {
+                const { getSpaceTools } = await import('@/lib/spaces/tools')
+                const spaceTools = await getSpaceTools({
+                  chatThreadId: id,
+                  spaceId,
+                })
+                return { ...mcpTools, ...artifactTools, ...spaceTools }
+              } catch (spaceError) {
+                console.error("Space tools unavailable", spaceError)
+                return { ...mcpTools, ...artifactTools }
+              }
             },
             onFinish: async ({ response, usage }) => {
-              if (appUserId && shouldPersistData()) {
+              if (appUserId && persistChat) {
                 try {
                   const assistantId = getTrailingMessageId({
                     messages: response.messages.filter(

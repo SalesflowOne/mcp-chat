@@ -126,11 +126,13 @@ function PureMultimodalInput({
       return;
     }
 
-    if (authStatus === 'loading' || authStatus === 'unauthenticated') {
+    if (!session?.user) {
+      if (authStatus === 'loading') {
+        return;
+      }
+
       // Save current input to localStorage so it persists after auth
       setLocalStorageInput(input);
-      
-      // Open the sign-in modal instead of redirecting immediately
       setIsSignInModalOpen(true);
       return;
     }
@@ -157,6 +159,7 @@ function PureMultimodalInput({
     chatId,
     authStatus,
     input,
+    session,
     setIsSignInModalOpen,
     status,
   ]);
@@ -350,8 +353,8 @@ function PureAttachmentsButton({
   status: UseChatHelpers['status'];
   setSignInModalOpen: (isOpen: boolean) => void;
 }) {
-  const { status: authStatus } = useEffectiveSession();
-  const isUnauthenticated = authStatus === 'unauthenticated';
+  const { data: session, status: authStatus } = useEffectiveSession();
+  const isUnauthenticated = !session?.user && authStatus !== 'loading';
   
   return (
     <Button

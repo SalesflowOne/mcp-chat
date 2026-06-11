@@ -9,6 +9,22 @@ import type { AppSession } from '@/lib/auth-session';
 
 const AUTH_LOAD_TIMEOUT_MS = 2500;
 
+async function fetchServerSession(): Promise<AppSession | null> {
+  try {
+    const response = await fetch('/api/auth/session', {
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const payload = (await response.json()) as { session?: AppSession | null };
+    return payload.session?.user ? payload.session : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Session hook that mirrors the legacy useSession shape for existing components.
  * Backed by Supabase Auth via AuthProvider.
@@ -26,6 +42,25 @@ export function useEffectiveSession() {
   const { isAuthDisabled, guestSession, serverSession } = useAuthContext();
   const { user, isLoading } = useAuth();
   const [authTimedOut, setAuthTimedOut] = useState(false);
+  const [fetchedSession, setFetchedSession] = useState<AppSession | null>(null);
+
+  const resolvedServerSession =
+    serverSession?.user ? serverSession : fetchedSession;
+
+  useEffect(() => {
+    if (serverSession?.user) {
+      return;
+    }
+    let cancelled = false;
+    void fetchServerSession().then((session) => {
+      if (!cancelled && session) {
+        setFetchedSession(session);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [serverSession]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -49,10 +84,10 @@ export function useEffectiveSession() {
     };
   }
 
-  // Server layout already verified the session — don't block chat on client auth lag.
-  if (serverSession?.user) {
+  // Server session (layout prop or /api/auth/session) — don't block chat on client auth lag.
+  if (resolvedServerSession?.user) {
     return {
-      data: withExpires(serverSession),
+      data: withExpires(resolvedServerSession),
       status: 'authenticated' as const,
       update: () => Promise.resolve(null),
     };

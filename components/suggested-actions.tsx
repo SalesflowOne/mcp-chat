@@ -24,7 +24,7 @@ interface SuggestedAction {
 
 function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
-  const { status: authStatus } = useEffectiveSession();
+  const { data: session, status: authStatus } = useEffectiveSession();
   const isMobile = useIsMobile();
   
   const handleActionClick = (e: React.MouseEvent, actionText: string) => {
@@ -32,7 +32,7 @@ function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
     e.preventDefault();
     e.stopPropagation();
     
-    if (authStatus === 'unauthenticated') {
+    if (!session?.user && authStatus !== 'loading') {
       try {
         // Save action text to localStorage as a JSON string so useLocalStorage can parse it
         localStorage.setItem('input', JSON.stringify(actionText));
@@ -143,4 +143,4 @@ function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
   );
 }
 
-export const SuggestedActions = memo(PureSuggestedActions, () => true);
+export const SuggestedActions = memo(PureSuggestedActions);

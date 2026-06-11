@@ -76,15 +76,21 @@ export function Chat({
     onError: (error) => {
       stop();
       const message = error instanceof Error ? error.message : String(error);
-      if (message.includes("401") || message.toLowerCase().includes("unauthorized")) {
+      const lower = message.toLowerCase();
+      if (
+        message.includes("401") ||
+        lower.includes("unauthorized") ||
+        lower.includes("authentication required") ||
+        lower.includes("redirecttoauth")
+      ) {
         toast.error("Sign in to send messages.");
         return;
       }
-      if (message.toLowerCase().includes("api key")) {
+      if (lower.includes("api key")) {
         toast.error("AI provider is not configured. Check server environment keys.");
         return;
       }
-      toast.error("Something went wrong. Try again.");
+      toast.error(message.length < 120 ? message : "Something went wrong. Try again.");
     },
   });
 

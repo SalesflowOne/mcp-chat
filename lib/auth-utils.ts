@@ -1,7 +1,6 @@
 import 'server-only';
 
-import { auth, currentUser } from '@clerk/nextjs/server';
-
+import { getCurrentUser } from '@/lib/auth/server';
 import { isAuthDisabled } from '@/lib/constants';
 import type { AppSession } from '@/lib/auth-session';
 import { createGuestSession } from '@/lib/utils';
@@ -14,25 +13,17 @@ export async function getEffectiveSession(): Promise<AppSession | null> {
     const guest = createGuestSession();
     return {
       ...guest,
-      clerkUserId: guest.user.id,
+      authUserId: guest.user.id,
       appUserId: guest.user.id,
       organizationId: 'guest',
     };
   }
 
-  const { userId: clerkUserId } = await auth();
+  const user = await getCurrentUser();
 
-  if (!clerkUserId) {
+  if (!user) {
     return null;
   }
-
-  const clerkProfile = await currentUser();
-  const email =
-    clerkProfile?.emailAddresses.find(
-      (e) => e.id === clerkProfile.primaryEmailAddressId,
-    )?.emailAddress ??
-    clerkProfile?.emailAddresses[0]?.emailAddress ??
-    '';
 
   if (isSupabaseConfigured()) {
     try {
@@ -40,28 +31,27 @@ export async function getEffectiveSession(): Promise<AppSession | null> {
       if (tenant) {
         return {
           user: {
-            id: tenant.clerkUserId,
+            id: tenant.authUserId,
             name:
               tenant.appUser.full_name ||
-              [clerkProfile?.firstName, clerkProfile?.lastName]
-                .filter(Boolean)
-                .join(' ') ||
+              user.name ||
               'User',
             email: tenant.appUser.email,
           },
-          clerkUserId: tenant.clerkUserId,
+          authUserId: tenant.authUserId,
           appUserId: tenant.appUser.id,
           organizationId: tenant.organizationId,
           isMasterAdmin: tenant.appUser.is_master_admin,
+          memberRole: tenant.memberRole,
         };
       }
 
       console.warn(
-        'Supabase tenant context unavailable; falling back to Clerk-only session',
+        'Supabase tenant context unavailable; falling back to auth-only session',
       );
     } catch (error) {
       console.error(
-        'Failed to resolve Supabase tenant context; falling back to Clerk-only session',
+        'Failed to resolve Supabase tenant context; falling back to auth-only session',
         error,
       );
     }
@@ -69,17 +59,12 @@ export async function getEffectiveSession(): Promise<AppSession | null> {
 
   return {
     user: {
-      id: clerkUserId,
-      name:
-        clerkProfile?.fullName ||
-        [clerkProfile?.firstName, clerkProfile?.lastName]
-          .filter(Boolean)
-          .join(' ') ||
-        'User',
-      email,
+      id: user.id,
+      name: user.name,
+      email: user.email,
     },
-    clerkUserId,
-    appUserId: clerkUserId,
+    authUserId: user.id,
+    appUserId: user.id,
     organizationId: 'default',
   };
 }

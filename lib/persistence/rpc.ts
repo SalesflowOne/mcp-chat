@@ -27,61 +27,50 @@ function persistSecret(): string {
 }
 
 export async function resolveTenantViaRpc(input: {
-  clerkUserId: string;
+  authUserId: string;
   email: string;
   fullName: string | null;
   avatarUrl: string | null;
-  clerkOrgId: string | null;
-  clerkOrgName: string | null;
-  clerkRole: string | null;
   cookieOrgId: string | null;
 }): Promise<TenantContext> {
   const supabase = getRpcClient();
   const secret = persistSecret();
 
-  const { data: appUser, error: userError } = await supabase.rpc('agentops_upsert_app_user', {
-    p_secret: secret,
-    p_clerk_user_id: input.clerkUserId,
-    p_email: input.email,
-    p_full_name: input.fullName,
-    p_avatar_url: input.avatarUrl,
-  });
+  const { data: appUser, error: userError } = await supabase.rpc(
+    'agentops_upsert_app_user',
+    {
+      p_secret: secret,
+      p_auth_user_id: input.authUserId,
+      p_email: input.email,
+      p_full_name: input.fullName,
+      p_avatar_url: input.avatarUrl,
+    },
+  );
 
   if (userError || !appUser) {
     throw userError ?? new Error('Failed to upsert app user');
   }
 
-  let organization: OrganizationRow;
-  if (input.clerkOrgId) {
-    const { data: org, error: orgError } = await supabase.rpc('agentops_sync_clerk_org', {
+  const { data: org, error: orgError } = await supabase.rpc(
+    'agentops_ensure_default_org',
+    {
       p_secret: secret,
-      p_clerk_org_id: input.clerkOrgId,
-      p_clerk_org_name: input.clerkOrgName ?? 'Organization',
-      p_app_user_id: appUser.id,
-      p_clerk_user_id: input.clerkUserId,
-      p_clerk_role: input.clerkRole ?? 'member',
-    });
-    if (orgError || !org) {
-      throw orgError ?? new Error('Failed to sync organization');
-    }
-    organization = org as OrganizationRow;
-  } else {
-    const { data: org, error: orgError } = await supabase.rpc('agentops_ensure_default_org', {
-      p_secret: secret,
-      p_app_user_id: appUser.id,
-    });
-    if (orgError || !org) {
-      throw orgError ?? new Error('Failed to ensure default organization');
-    }
-    organization = org as OrganizationRow;
+      p_app_user_id: (appUser as AppUserRow).id,
+    },
+  );
+
+  if (orgError || !org) {
+    throw orgError ?? new Error('Failed to ensure default organization');
   }
+
+  let organization = org as OrganizationRow;
 
   if (input.cookieOrgId && input.cookieOrgId !== organization.id) {
     const { data: overrideOrg } = await supabase.rpc('agentops_get_org_if_member', {
       p_secret: secret,
       p_org_id: input.cookieOrgId,
-      p_app_user_id: appUser.id,
-      p_is_master_admin: appUser.is_master_admin,
+      p_app_user_id: (appUser as AppUserRow).id,
+      p_is_master_admin: (appUser as AppUserRow).is_master_admin,
     });
     if (overrideOrg) {
       organization = overrideOrg as OrganizationRow;
@@ -91,8 +80,9 @@ export async function resolveTenantViaRpc(input: {
   return {
     appUser: appUser as AppUserRow,
     organization,
-    clerkUserId: input.clerkUserId,
+    authUserId: input.authUserId,
     organizationId: organization.id,
+    memberRole: 'owner',
   };
 }
 
@@ -115,13 +105,13 @@ export async function saveChatViaRpc(input: {
 
 export async function getChatByIdViaRpc(input: {
   id: string;
-  clerkUserId: string;
+  authUserId: string;
 }): Promise<ChatThreadRow | null> {
   const supabase = getRpcClient();
   const { data, error } = await supabase.rpc('agentops_get_chat_by_id', {
     p_secret: persistSecret(),
     p_chat_id: input.id,
-    p_clerk_user_id: input.clerkUserId,
+    p_auth_user_id: input.authUserId,
   });
   if (error) throw error;
   return (data as ChatThreadRow | null) ?? null;
@@ -166,13 +156,13 @@ export async function saveMessagesViaRpc(input: {
 
 export async function getMessagesByChatIdViaRpc(input: {
   id: string;
-  clerkUserId: string;
+  authUserId: string;
 }): Promise<ChatMessageRow[]> {
   const supabase = getRpcClient();
   const { data, error } = await supabase.rpc('agentops_get_messages_by_chat', {
     p_secret: persistSecret(),
     p_chat_id: input.id,
-    p_clerk_user_id: input.clerkUserId,
+    p_auth_user_id: input.authUserId,
   });
   if (error) throw error;
   return (data as ChatMessageRow[]) ?? [];

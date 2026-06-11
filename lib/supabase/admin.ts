@@ -12,7 +12,7 @@ import type { Database } from '@/lib/supabase/types';
 
 let adminClient: ReturnType<typeof createClient<Database>> | null = null;
 
-/** Service-role client — server only, after Clerk + org access checks. */
+/** Service-role client — server only, after auth + org access checks. */
 export function getSupabaseAdminClient() {
   if (!isSupabaseConfigured()) {
     throw new Error('Supabase is not configured');

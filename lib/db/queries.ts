@@ -88,7 +88,7 @@ export async function saveChat({
     }
     return saveChatSupabase({
       id,
-      clerkUserId: tenant.clerkUserId,
+      authUserId: tenant.authUserId,
       appUserId: tenant.appUser.id,
       organizationId: organizationId ?? tenant.organizationId,
       title,
@@ -110,10 +110,10 @@ export async function saveChat({
 
 export async function deleteChatById({
   id,
-  clerkUserId,
+  authUserId,
 }: {
   id: string;
-  clerkUserId?: string;
+  authUserId?: string;
 }) {
   if (useSupabasePersistence()) {
     const tenant = await resolveTenantContext();
@@ -122,7 +122,7 @@ export async function deleteChatById({
     }
     return deleteChatByIdSupabase({
       id,
-      clerkUserId: clerkUserId ?? tenant.clerkUserId,
+      authUserId: authUserId ?? tenant.authUserId,
     });
   }
 
@@ -170,10 +170,10 @@ export async function getChatsByUserId({
 
 export async function getChatById({
   id,
-  clerkUserId,
+  authUserId,
 }: {
   id: string;
-  clerkUserId?: string;
+  authUserId?: string;
 }) {
   if (useSupabasePersistence()) {
     const tenant = await resolveTenantContext();
@@ -182,7 +182,7 @@ export async function getChatById({
     }
     return getChatByIdSupabase({
       id,
-      clerkUserId: clerkUserId ?? tenant.clerkUserId,
+      authUserId: authUserId ?? tenant.authUserId,
     });
   }
 
@@ -236,10 +236,10 @@ export async function saveMessages({
 
 export async function getMessagesByChatId({
   id,
-  clerkUserId,
+  authUserId,
 }: {
   id: string;
-  clerkUserId?: string;
+  authUserId?: string;
 }) {
   if (useSupabasePersistence()) {
     const tenant = await resolveTenantContext();
@@ -248,7 +248,7 @@ export async function getMessagesByChatId({
     }
     return getMessagesByChatIdSupabase({
       id,
-      clerkUserId: clerkUserId ?? tenant.clerkUserId,
+      authUserId: authUserId ?? tenant.authUserId,
     });
   }
 
@@ -525,11 +525,11 @@ export async function deleteMessagesByChatIdAfterTimestamp({
 export async function updateChatVisiblityById({
   chatId,
   visibility,
-  clerkUserId,
+  authUserId,
 }: {
   chatId: string;
   visibility: 'private' | 'public';
-  clerkUserId?: string;
+  authUserId?: string;
 }) {
   if (useSupabasePersistence()) {
     const tenant = await resolveTenantContext();
@@ -539,7 +539,7 @@ export async function updateChatVisiblityById({
     return updateChatVisibilitySupabase({
       chatId,
       visibility,
-      clerkUserId: clerkUserId ?? tenant.clerkUserId,
+      authUserId: authUserId ?? tenant.authUserId,
     });
   }
 

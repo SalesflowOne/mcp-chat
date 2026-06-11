@@ -10,7 +10,7 @@ if (envFilePath) {
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
-  // WebContainer requires cross-origin isolation — scoped to Spaces only so Clerk auth works on / and /chat.
+  // WebContainer requires cross-origin isolation — scoped to Spaces only.
   async headers() {
     return [
       {

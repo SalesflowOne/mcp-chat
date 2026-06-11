@@ -1,15 +1,12 @@
-import { ClerkSignInView } from '@/components/auth/clerk-sign-in-view';
-import { SatelliteAuthRedirect } from '@/components/auth/satellite-auth-redirect';
-import { isClerkSatelliteApp } from '@/lib/clerk-config';
+import { redirect } from 'next/navigation';
 
-export default function SignInPage() {
-  if (isClerkSatelliteApp()) {
-    return <SatelliteAuthRedirect mode="sign-in" />;
-  }
-
-  return (
-    <div className="flex min-h-dvh w-full items-center justify-center p-4">
-      <ClerkSignInView />
-    </div>
-  );
+export default async function SignInRedirectPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const returnTo = typeof params.returnTo === 'string' ? params.returnTo : undefined;
+  const query = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '';
+  redirect(`/login${query}`);
 }

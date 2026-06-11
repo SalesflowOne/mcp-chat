@@ -3,17 +3,11 @@
  * Copy selected env vars from agent-workspace → agentops-mcp-chat (production).
  * Values are never printed. Requires VERCEL_TOKEN in the environment.
  */
-import { execSync } from 'node:child_process';
-
 const TEAM_ID = 'team_Na274IDFwAHRPi5JdFrzvRUk';
 const SOURCE_PROJECT = 'prj_rfpkxF851mXoRPObhavjPsTFCpGC'; // agent-workspace
 const TARGET_PROJECT = 'prj_9k6rLDi9UP0YMf1QfuMgSi9yirJH'; // agentops-mcp-chat
 
 const KEYS_TO_COPY = [
-  'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
-  'VITE_CLERK_PUBLISHABLE_KEY',
-  'CLERK_SECRET_KEY',
-  'CLERK_FRONTEND_API_URL',
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
@@ -29,10 +23,10 @@ const KEYS_TO_COPY = [
   'DATADOG_CLIENT_TOKEN',
   'NEXT_PUBLIC_DATADOG_APPLICATION_ID',
   'NEXT_PUBLIC_DATADOG_CLIENT_TOKEN',
+  'AGENTOPS_PERSIST_SECRET',
 ];
 
 const KEY_ALIASES = {
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'VITE_CLERK_PUBLISHABLE_KEY',
   NEXT_PUBLIC_SUPABASE_URL: 'SUPABASE_URL',
   NEXT_PUBLIC_SUPABASE_ANON_KEY: 'SUPABASE_PUBLISHABLE_KEY',
 };
@@ -40,16 +34,7 @@ const KEY_ALIASES = {
 const KEYS_TO_SET = {
   DISABLE_AUTH: 'false',
   DISABLE_PERSISTENCE: 'false',
-  NEXT_PUBLIC_CLERK_IS_SATELLITE: 'true',
-  NEXT_PUBLIC_CLERK_DOMAIN: 'agentops.one',
-  NEXT_PUBLIC_CLERK_PROXY_URL: 'https://agentops.one/__clerk',
-  NEXT_PUBLIC_CLERK_SIGN_IN_URL: 'https://accounts.oneaccess.one/sign-in',
-  NEXT_PUBLIC_CLERK_SIGN_UP_URL: 'https://accounts.oneaccess.one/sign-up',
   NEXT_PUBLIC_APP_URL: 'https://agentops.one',
-  NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: 'https://agentops.one/',
-  NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: 'https://agentops.one/',
-  NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL: 'https://agentops.one/',
-  NEXT_PUBLIC_CLERK_SIGN_UP_FORCE_REDIRECT_URL: 'https://agentops.one/',
   VERCEL_TEAM_ID: TEAM_ID,
 };
 
@@ -117,7 +102,6 @@ const sourceByKey = Object.fromEntries(source.map((e) => [e.key, e.value]));
 
 const copied = new Set();
 for (const key of KEYS_TO_COPY) {
-  if (key.startsWith('VITE_')) continue;
   let value = sourceByKey[key];
   if (!value && KEY_ALIASES[key]) {
     value = sourceByKey[KEY_ALIASES[key]];
@@ -130,14 +114,6 @@ for (const key of KEYS_TO_COPY) {
   }
   if (!value) {
     console.warn(`Skip ${key}: not found on source project`);
-    continue;
-  }
-  if (key === 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY' && !value.startsWith('pk_')) {
-    console.warn(`Skip ${key}: invalid format (expected pk_*)`);
-    continue;
-  }
-  if (key === 'CLERK_SECRET_KEY' && !value.startsWith('sk_')) {
-    console.warn(`Skip ${key}: invalid format (expected sk_*)`);
     continue;
   }
   if (key === 'NEXT_PUBLIC_SUPABASE_URL' && !value.startsWith('https://')) {

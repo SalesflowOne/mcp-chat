@@ -1,13 +1,13 @@
 import 'server-only';
 
 import { cookies } from 'next/headers';
-import { auth, currentUser } from '@clerk/nextjs/server';
 
+import { getCurrentUser } from '@/lib/auth/server';
 import { ACTIVE_ORG_COOKIE } from '@/lib/tenant/constants';
 import {
   ensureDefaultOrganization,
-  syncClerkOrganizationMembership,
-  upsertAppUserFromClerk,
+  upsertAppUserFromAuth,
+  type AuthUserInput,
 } from '@/lib/tenant/sync';
 import { resolveTenantViaRpc } from '@/lib/persistence/rpc';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -17,79 +17,40 @@ import type { AppUserRow, OrganizationRow } from '@/lib/supabase/types';
 export type TenantContext = {
   appUser: AppUserRow;
   organization: OrganizationRow;
-  clerkUserId: string;
+  authUserId: string;
   organizationId: string;
+  memberRole: string | null;
 };
 
-async function resolveActiveClerkOrgId(
-  clerkOrgId: string | null | undefined,
-): Promise<string | null> {
-  if (clerkOrgId) {
-    return clerkOrgId;
-  }
+export async function resolveTenantContext(): Promise<TenantContext | null> {
+  const user = await getCurrentUser();
 
-  const user = await currentUser();
   if (!user) {
     return null;
   }
 
-  return user.organizationMemberships?.[0]?.organization.id ?? null;
-}
-
-export async function resolveTenantContext(): Promise<TenantContext | null> {
-  const { userId: clerkUserId, orgId: clerkOrgId } = await auth();
-
-  if (!clerkUserId) {
-    return null;
-  }
+  const authInput: AuthUserInput = {
+    authUserId: user.id,
+    email: user.email,
+    fullName: user.name,
+    avatarUrl: user.avatarUrl,
+  };
 
   if (!hasSupabaseServiceRole()) {
-    const user = await currentUser();
-    const membership = user?.organizationMemberships?.find(
-      (m) => m.organization.id === (clerkOrgId ?? user?.organizationMemberships?.[0]?.organization.id),
-    );
     const cookieStore = await cookies();
-
     return resolveTenantViaRpc({
-      clerkUserId,
-      email:
-        user?.emailAddresses.find((e) => e.id === user.primaryEmailAddressId)
-          ?.emailAddress ??
-        user?.emailAddresses[0]?.emailAddress ??
-        '',
-      fullName:
-        user?.fullName ||
-        [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
-        null,
-      avatarUrl: user?.imageUrl ?? null,
-      clerkOrgId: (await resolveActiveClerkOrgId(clerkOrgId)) ?? null,
-      clerkOrgName: membership?.organization.name ?? null,
-      clerkRole: membership?.role ?? null,
+      authUserId: user.id,
+      email: user.email,
+      fullName: user.name,
+      avatarUrl: user.avatarUrl ?? null,
       cookieOrgId: cookieStore.get(ACTIVE_ORG_COOKIE)?.value ?? null,
     });
   }
 
-  const appUser = await upsertAppUserFromClerk();
+  const appUser = await upsertAppUserFromAuth(authInput);
   const supabase = getSupabaseAdminClient();
 
-  let organization: OrganizationRow | null = null;
-  const activeClerkOrgId = await resolveActiveClerkOrgId(clerkOrgId);
-
-  if (activeClerkOrgId) {
-    const user = await currentUser();
-    const membership = user?.organizationMemberships?.find(
-      (m) => m.organization.id === activeClerkOrgId,
-    );
-
-    organization = await syncClerkOrganizationMembership(
-      activeClerkOrgId,
-      membership?.organization.name ?? 'Organization',
-      clerkUserId,
-      membership?.role ?? 'member',
-    );
-  } else {
-    organization = await ensureDefaultOrganization(appUser);
-  }
+  let organization = await ensureDefaultOrganization(appUser);
 
   const cookieStore = await cookies();
   const cookieOrgId = cookieStore.get(ACTIVE_ORG_COOKIE)?.value;
@@ -125,10 +86,18 @@ export async function resolveTenantContext(): Promise<TenantContext | null> {
     }
   }
 
+  const { data: member } = await supabase
+    .from('organization_members')
+    .select('role')
+    .eq('organization_id', organization.id)
+    .eq('user_id', appUser.id)
+    .maybeSingle();
+
   return {
     appUser,
     organization,
-    clerkUserId,
+    authUserId: user.id,
     organizationId: organization.id,
+    memberRole: member?.role ?? null,
   };
 }

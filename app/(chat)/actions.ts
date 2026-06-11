@@ -49,7 +49,7 @@ export async function deleteTrailingMessages({ id }: { id: string }) {
 
   const chat = await getChatById({
     id: message.chatId,
-    clerkUserId: session.clerkUserId,
+    authUserId: session.authUserId,
   });
   if (!chat || chat.userId !== session.appUserId) {
     throw new Error('Chat not found or not owned by user');
@@ -75,7 +75,7 @@ export async function updateChatVisibility({
 
   const chat = await getChatById({
     id: chatId,
-    clerkUserId: session.clerkUserId,
+    authUserId: session.authUserId,
   });
   if (!chat || chat.userId !== session.appUserId) {
     throw new Error('Chat not found or not owned by user');
@@ -84,6 +84,6 @@ export async function updateChatVisibility({
   await updateChatVisiblityById({
     chatId,
     visibility,
-    clerkUserId: session.clerkUserId,
+    authUserId: session.authUserId,
   });
 }

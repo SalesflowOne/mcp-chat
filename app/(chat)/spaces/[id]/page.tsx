@@ -45,12 +45,12 @@ async function SpacePageInner({ params }: { params: Promise<{ id: string }> }) {
 
   const session = await getEffectiveSession();
   if (!session?.user) {
-    redirect('/sign-in');
+    redirect('/login');
   }
 
   const ctx = await resolveTenantContext();
   if (!ctx) {
-    redirect('/sign-in');
+    redirect('/login');
   }
 
   let space;
@@ -86,7 +86,7 @@ async function SpacePageInner({ params }: { params: Promise<{ id: string }> }) {
   try {
     const messages = await getMessagesByChatId({
       id: chatId,
-      clerkUserId: ctx.clerkUserId,
+      authUserId: ctx.authUserId,
     });
     initialMessages = toUIMessages(messages);
   } catch {

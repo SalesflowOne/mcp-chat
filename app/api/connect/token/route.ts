@@ -4,7 +4,7 @@ import { pdClient } from '@/lib/pd-backend-client';
 export async function POST(request: Request) {
   const session = await getEffectiveSession();
 
-  if (!session?.clerkUserId) {
+  if (!session?.authUserId) {
     return Response.json({ error: 'Authentication required' }, { status: 401 });
   }
 
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const app = typeof body.app === 'string' ? body.app : undefined;
 
     const tokenResponse = await pdClient().tokens.create({
-      external_user_id: session.clerkUserId,
+      external_user_id: session.authUserId,
       ...(app ? { app } : {}),
     });
 

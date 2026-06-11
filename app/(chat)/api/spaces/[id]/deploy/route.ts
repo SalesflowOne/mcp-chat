@@ -1,8 +1,8 @@
 import { getEffectiveSession } from '@/lib/auth-utils';
 import { resolveTenantContext } from '@/lib/tenant/context';
+import { getMemberRole } from '@/lib/tenant/sync';
 import { getSpaceById } from '@/lib/spaces/repository';
 import { deploySpaceToVercel } from '@/lib/spaces/deploy';
-import { auth } from '@clerk/nextjs/server';
 
 export async function POST(
   _request: Request,
@@ -19,14 +19,16 @@ export async function POST(
     return Response.json({ error: 'Tenant not found' }, { status: 403 });
   }
 
-  const { orgRole } = await auth();
+  const memberRole =
+    tenant.memberRole ??
+    (await getMemberRole(tenant.organizationId, tenant.appUser.id));
 
   try {
     const space = await getSpaceById(id, tenant);
     const result = await deploySpaceToVercel({
       space,
       ctx: tenant,
-      memberRole: orgRole,
+      memberRole,
     });
 
     return Response.json(result);

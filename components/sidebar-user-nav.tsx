@@ -1,10 +1,11 @@
 'use client';
 
-import { useClerk } from '@clerk/nextjs';
 import { ChevronUp } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useTheme } from 'next-themes';
 
+import { useAuth } from '@/hooks/useAuth';
 import type { User } from '@/types/user';
 import {
   DropdownMenu,
@@ -21,7 +22,7 @@ import {
 
 export function SidebarUserNav({ user }: { user: User }) {
   const { setTheme, theme } = useTheme();
-  const { signOut } = useClerk();
+  const { signOut } = useAuth();
 
   return (
     <SidebarMenu>
@@ -44,6 +45,11 @@ export function SidebarUserNav({ user }: { user: User }) {
             side="top"
             className="w-[--radix-popper-anchor-width]"
           >
+            <DropdownMenuItem asChild>
+              <Link href="/settings" className="w-full cursor-pointer">
+                Account settings
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem
               className="cursor-pointer"
               onSelect={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -65,7 +71,7 @@ export function SidebarUserNav({ user }: { user: User }) {
               <button
                 type="button"
                 className="w-full cursor-pointer"
-                onClick={() => signOut({ redirectUrl: '/' })}
+                onClick={() => void signOut()}
               >
                 Sign out
               </button>

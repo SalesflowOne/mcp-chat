@@ -1,7 +1,6 @@
 import 'server-only';
 
-import { auth, currentUser } from '@clerk/nextjs/server';
-
+import { getCurrentUser } from '@/lib/auth/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { MASTER_ADMIN_EMAIL } from '@/lib/tenant/constants';
 import type { AppUserRow, OrganizationRow } from '@/lib/supabase/types';
@@ -20,41 +19,76 @@ function isMasterAdminEmail(email: string): boolean {
   return email.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
 }
 
-export async function upsertAppUserFromClerk(): Promise<AppUserRow> {
-  const { userId: clerkUserId } = await auth();
+export type AuthUserInput = {
+  authUserId: string;
+  email: string;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+};
 
-  if (!clerkUserId) {
-    throw new Error('Not authenticated');
+export async function upsertProfile(input: AuthUserInput): Promise<void> {
+  const supabase = getSupabaseAdminClient();
+  const displayName =
+    (input.fullName ??
+      [input.firstName, input.lastName].filter(Boolean).join(' ')) ||
+    input.email.split('@')[0];
+
+  await supabase.from('profiles').upsert(
+    {
+      user_id: input.authUserId,
+      email: input.email.toLowerCase(),
+      first_name: input.firstName ?? null,
+      last_name: input.lastName ?? null,
+      display_name: displayName,
+      avatar_url: input.avatarUrl ?? null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id' },
+  );
+}
+
+export async function upsertAppUserFromAuth(
+  input?: AuthUserInput,
+): Promise<AppUserRow> {
+  let authInput = input;
+
+  if (!authInput) {
+    const user = await getCurrentUser();
+    if (!user) {
+      throw new Error('Not authenticated');
+    }
+    authInput = {
+      authUserId: user.id,
+      email: user.email,
+      fullName: user.name,
+      avatarUrl: user.avatarUrl,
+    };
   }
 
-  const clerkUser = await currentUser();
-  const email =
-    clerkUser?.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)
-      ?.emailAddress ??
-    clerkUser?.emailAddresses[0]?.emailAddress ??
-    '';
+  const { authUserId, email, fullName, avatarUrl } = authInput;
 
   if (!email) {
-    throw new Error('Clerk user has no email');
+    throw new Error('User has no email');
   }
 
   const master = isMasterAdminEmail(email);
   const supabase = getSupabaseAdminClient();
 
+  await upsertProfile(authInput);
+
   const { data: existing } = await supabase
     .from('app_users')
     .select('*')
-    .eq('clerk_user_id', clerkUserId)
+    .eq('id', authUserId)
     .maybeSingle();
 
   const payload = {
-    clerk_user_id: clerkUserId,
+    id: authUserId,
     email: email.toLowerCase(),
-    full_name:
-      clerkUser?.fullName ||
-      [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(' ') ||
-      null,
-    avatar_url: clerkUser?.imageUrl ?? null,
+    full_name: fullName ?? null,
+    avatar_url: avatarUrl ?? null,
     role: master ? 'master_admin' : 'user',
     is_master_admin: master,
   };
@@ -63,7 +97,7 @@ export async function upsertAppUserFromClerk(): Promise<AppUserRow> {
     const { data, error } = await supabase
       .from('app_users')
       .update(payload)
-      .eq('id', existing.id)
+      .eq('id', authUserId)
       .select('*')
       .single();
 
@@ -71,6 +105,31 @@ export async function upsertAppUserFromClerk(): Promise<AppUserRow> {
       throw error ?? new Error('Failed to update app user');
     }
 
+    return data;
+  }
+
+  const { data: byEmail } = await supabase
+    .from('app_users')
+    .select('*')
+    .eq('email', email.toLowerCase())
+    .maybeSingle();
+
+  if (byEmail && byEmail.id !== authUserId) {
+    const { data, error } = await supabase
+      .from('app_users')
+      .update({
+        full_name: payload.full_name,
+        avatar_url: payload.avatar_url,
+        role: payload.role,
+        is_master_admin: payload.is_master_admin,
+      })
+      .eq('id', byEmail.id)
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      throw error ?? new Error('Failed to link legacy app user');
+    }
     return data;
   }
 
@@ -124,7 +183,7 @@ export async function ensureDefaultOrganization(
     .insert({
       name,
       slug,
-      owner_id: null,
+      owner_id: appUser.id,
       status: 'active',
     })
     .select('*')
@@ -134,13 +193,11 @@ export async function ensureDefaultOrganization(
     throw orgError ?? new Error('Failed to create default organization');
   }
 
-  const personalClerkOrgId = `personal:${appUser.clerk_user_id}`;
   const { error: memberError } = await supabase.from('organization_members').insert({
     organization_id: org.id,
     user_id: appUser.id,
-    clerk_user_id: appUser.clerk_user_id,
-    clerk_org_id: personalClerkOrgId,
     role: 'owner',
+    status: 'active',
   });
 
   if (memberError) {
@@ -150,61 +207,17 @@ export async function ensureDefaultOrganization(
   return org;
 }
 
-export async function syncClerkOrganizationMembership(
-  clerkOrgId: string,
-  clerkOrgName: string,
-  clerkUserId: string,
-  clerkRole: string,
-): Promise<OrganizationRow> {
+export async function getMemberRole(
+  organizationId: string,
+  userId: string,
+): Promise<string | null> {
   const supabase = getSupabaseAdminClient();
-
-  const appUser = await upsertAppUserFromClerk();
-
-  let { data: org } = await supabase
-    .from('organizations')
-    .select('*')
-    .eq('clerk_org_id', clerkOrgId)
+  const { data } = await supabase
+    .from('organization_members')
+    .select('role')
+    .eq('organization_id', organizationId)
+    .eq('user_id', userId)
     .maybeSingle();
 
-  if (!org) {
-    const slug = `${slugify(clerkOrgName)}-${clerkOrgId.slice(-8)}`;
-    const { data: created, error } = await supabase
-      .from('organizations')
-      .insert({
-        clerk_org_id: clerkOrgId,
-        name: clerkOrgName,
-        slug,
-        owner_id: null,
-        status: 'active',
-      })
-      .select('*')
-      .single();
-
-    if (error || !created) {
-      throw error ?? new Error('Failed to sync organization');
-    }
-    org = created;
-  }
-
-  const mappedRole =
-    clerkRole === 'org:admin' || clerkRole === 'admin'
-      ? 'admin'
-      : clerkRole === 'org:member' || clerkRole === 'member'
-        ? 'member'
-        : clerkRole === 'viewer'
-          ? 'viewer'
-          : 'member';
-
-  await supabase.from('organization_members').upsert(
-    {
-      organization_id: org.id,
-      user_id: appUser.id,
-      clerk_user_id: clerkUserId,
-      clerk_org_id: clerkOrgId,
-      role: mappedRole,
-    },
-    { onConflict: 'organization_id,user_id' },
-  );
-
-  return org;
+  return data?.role ?? null;
 }

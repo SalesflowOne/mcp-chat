@@ -63,7 +63,7 @@ function toLegacyMessage(row: ChatMessageRow): LegacyDBMessage {
 
 async function getContextForThread(
   threadId: string,
-  clerkUserId: string,
+  authUserId: string,
 ): Promise<TenantContext> {
   const supabase = getSupabaseAdminClient();
   const { data: thread } = await supabase
@@ -77,7 +77,7 @@ async function getContextForThread(
   }
 
   const ctx = await requireOrgAccess(thread.organization_id);
-  if (!ctx.appUser.is_master_admin && ctx.clerkUserId !== clerkUserId) {
+  if (!ctx.appUser.is_master_admin && ctx.authUserId !== authUserId) {
     const { data: owned } = await supabase
       .from('chat_threads')
       .select('id')
@@ -95,13 +95,13 @@ async function getContextForThread(
 
 export async function saveChatSupabase({
   id,
-  clerkUserId,
+  authUserId,
   appUserId,
   organizationId,
   title,
 }: {
   id: string;
-  clerkUserId: string;
+  authUserId: string;
   appUserId: string;
   organizationId: string;
   title: string;
@@ -132,18 +132,18 @@ export async function saveChatSupabase({
 
 export async function getChatByIdSupabase({
   id,
-  clerkUserId,
+  authUserId,
 }: {
   id: string;
-  clerkUserId: string;
+  authUserId: string;
 }): Promise<LegacyChat | null> {
   if (!hasSupabaseServiceRole() && isRpcPersistConfigured()) {
-    const data = await getChatByIdViaRpc({ id, clerkUserId });
+    const data = await getChatByIdViaRpc({ id, authUserId });
     if (!data) return null;
     return toLegacyChat(data, data.user_id ?? '');
   }
 
-  const ctx = await getContextForThread(id, clerkUserId);
+  const ctx = await getContextForThread(id, authUserId);
   const supabase = getSupabaseAdminClient();
 
   const { data, error } = await supabase
@@ -195,12 +195,12 @@ export async function getChatsByUserIdSupabase({
 
 export async function deleteChatByIdSupabase({
   id,
-  clerkUserId,
+  authUserId,
 }: {
   id: string;
-  clerkUserId: string;
+  authUserId: string;
 }) {
-  await getContextForThread(id, clerkUserId);
+  await getContextForThread(id, authUserId);
   const supabase = getSupabaseAdminClient();
 
   const { error } = await supabase.from('chat_threads').delete().eq('id', id);
@@ -265,17 +265,17 @@ export async function saveMessagesSupabase({
 
 export async function getMessagesByChatIdSupabase({
   id,
-  clerkUserId,
+  authUserId,
 }: {
   id: string;
-  clerkUserId: string;
+  authUserId: string;
 }): Promise<LegacyDBMessage[]> {
   if (!hasSupabaseServiceRole() && isRpcPersistConfigured()) {
-    const data = await getMessagesByChatIdViaRpc({ id, clerkUserId });
+    const data = await getMessagesByChatIdViaRpc({ id, authUserId });
     return data.map(toLegacyMessage);
   }
 
-  await getContextForThread(id, clerkUserId);
+  await getContextForThread(id, authUserId);
   const supabase = getSupabaseAdminClient();
 
   const { data, error } = await supabase
@@ -294,13 +294,13 @@ export async function getMessagesByChatIdSupabase({
 export async function updateChatVisibilitySupabase({
   chatId,
   visibility,
-  clerkUserId,
+  authUserId,
 }: {
   chatId: string;
   visibility: 'private' | 'public';
-  clerkUserId: string;
+  authUserId: string;
 }) {
-  await getContextForThread(chatId, clerkUserId);
+  await getContextForThread(chatId, authUserId);
   const supabase = getSupabaseAdminClient();
 
   const { error } = await supabase

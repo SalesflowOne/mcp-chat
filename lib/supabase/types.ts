@@ -6,9 +6,28 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
+export type ProfileRow = {
+  id: string;
+  user_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  display_name: string | null;
+  email: string;
+  phone: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type UserRoleRow = {
+  id: string;
+  user_id: string;
+  role: string;
+};
+
 export type AppUserRow = {
   id: string;
-  clerk_user_id: string;
+  clerk_user_id?: string | null;
   email: string;
   full_name: string | null;
   avatar_url: string | null;
@@ -20,7 +39,7 @@ export type AppUserRow = {
 
 export type OrganizationRow = {
   id: string;
-  clerk_org_id: string | null;
+  clerk_org_id?: string | null;
   name: string;
   slug: string;
   owner_id?: string | null;
@@ -34,7 +53,7 @@ export type OrganizationMemberRow = {
   id: string;
   organization_id: string;
   user_id: string;
-  clerk_user_id: string;
+  clerk_user_id?: string | null;
   clerk_org_id?: string | null;
   role: string;
   status?: string;
@@ -121,19 +140,17 @@ export type AuditLogRow = {
 export type Database = {
   public: {
     Tables: {
-      app_users: { Row: AppUserRow; Insert: Partial<AppUserRow> & Pick<AppUserRow, 'clerk_user_id' | 'email'>; Update: Partial<AppUserRow> };
+      profiles: { Row: ProfileRow; Insert: Partial<ProfileRow> & Pick<ProfileRow, 'user_id' | 'email'>; Update: Partial<ProfileRow> };
+      user_roles: { Row: UserRoleRow; Insert: Partial<UserRoleRow> & Pick<UserRoleRow, 'user_id'>; Update: Partial<UserRoleRow> };
+      app_users: { Row: AppUserRow; Insert: Partial<AppUserRow> & Pick<AppUserRow, 'id' | 'email'>; Update: Partial<AppUserRow> };
       organizations: { Row: OrganizationRow; Insert: Partial<OrganizationRow> & Pick<OrganizationRow, 'name' | 'slug'>; Update: Partial<OrganizationRow> };
-      organization_members: { Row: OrganizationMemberRow; Insert: Partial<OrganizationMemberRow> & Pick<OrganizationMemberRow, 'organization_id' | 'user_id' | 'clerk_user_id'>; Update: Partial<OrganizationMemberRow> };
+      organization_members: { Row: OrganizationMemberRow; Insert: Partial<OrganizationMemberRow> & Pick<OrganizationMemberRow, 'organization_id' | 'user_id'>; Update: Partial<OrganizationMemberRow> };
       chat_threads: { Row: ChatThreadRow; Insert: Partial<ChatThreadRow> & Pick<ChatThreadRow, 'organization_id'>; Update: Partial<ChatThreadRow> };
       chat_messages: { Row: ChatMessageRow; Insert: Partial<ChatMessageRow> & Pick<ChatMessageRow, 'thread_id' | 'organization_id' | 'role'>; Update: Partial<ChatMessageRow> };
-      connected_accounts: { Row: Record<string, unknown>; Insert: Record<string, unknown>; Update: Record<string, unknown> };
-      usage_events: { Row: UsageEventRow; Insert: Partial<UsageEventRow> & Pick<UsageEventRow, 'organization_id' | 'event_type'>; Update: Partial<UsageEventRow> };
-      audit_logs: { Row: AuditLogRow; Insert: Partial<AuditLogRow> & Pick<AuditLogRow, 'action'>; Update: Partial<AuditLogRow> };
       spaces: { Row: SpaceRow; Insert: Partial<SpaceRow> & Pick<SpaceRow, 'organization_id' | 'title' | 'slug'>; Update: Partial<SpaceRow> };
       space_files: { Row: SpaceFileRow; Insert: Partial<SpaceFileRow> & Pick<SpaceFileRow, 'space_id' | 'organization_id' | 'path'>; Update: Partial<SpaceFileRow> };
-      space_versions: { Row: Record<string, unknown>; Insert: Record<string, unknown>; Update: Record<string, unknown> };
-      space_share_links: { Row: Record<string, unknown>; Insert: Record<string, unknown>; Update: Record<string, unknown> };
-      space_deployments: { Row: Record<string, unknown>; Insert: Record<string, unknown>; Update: Record<string, unknown> };
+      usage_events: { Row: UsageEventRow; Insert: Partial<UsageEventRow> & Pick<UsageEventRow, 'organization_id' | 'event_type'>; Update: Partial<UsageEventRow> };
+      audit_logs: { Row: AuditLogRow; Insert: Partial<AuditLogRow> & Pick<AuditLogRow, 'action'>; Update: Partial<AuditLogRow> };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

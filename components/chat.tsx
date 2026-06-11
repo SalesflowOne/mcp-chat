@@ -185,7 +185,7 @@ export function Chat({
           type="button"
           className="mt-4 inline-block text-sm font-medium text-indigo-600 underline"
           onClick={() => {
-            window.location.assign('/sign-in');
+            window.location.assign('/login');
           }}
         >
           Get started

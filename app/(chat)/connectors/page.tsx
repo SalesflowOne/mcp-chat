@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation';
 export default async function ConnectorsPage() {
   const session = await getEffectiveSession();
   if (!session?.user) {
-    redirect('/sign-in');
+    redirect('/login');
   }
 
   const accounts = await getConnectedAccounts();

@@ -26,7 +26,7 @@ export async function generateMetadata(
   const session = await getEffectiveSession();
   const chat = await getChatById({
     id,
-    clerkUserId: session?.clerkUserId,
+    authUserId: session?.authUserId,
   });
 
   if (!chat) {
@@ -37,7 +37,7 @@ export async function generateMetadata(
   // Find the first user message to use as description
   const messages = await getMessagesByChatId({
     id,
-    clerkUserId: session?.clerkUserId,
+    authUserId: session?.authUserId,
   });
   const firstUserMessage = messages.find(msg => msg.role === 'user');
   const description = firstUserMessage 
@@ -126,7 +126,7 @@ async function ChatPage({ params }: { params: Promise<{ id: string }> }) {
 
   const chat = await getChatById({
     id,
-    clerkUserId: session?.clerkUserId,
+    authUserId: session?.authUserId,
   });
 
   if (!chat) {
@@ -145,7 +145,7 @@ async function ChatPage({ params }: { params: Promise<{ id: string }> }) {
 
   const messagesFromDb = await getMessagesByChatId({
     id,
-    clerkUserId: session?.clerkUserId,
+    authUserId: session?.authUserId,
   });
 
   function convertToUIMessages(messages: Array<DBMessage>): Array<UIMessage> {

@@ -11,7 +11,7 @@ type Params = { params: Promise<{ slug: string }> };
 export default async function IntegrationDetailPage({ params }: Params) {
   const session = await getEffectiveSession();
   if (!session?.user) {
-    redirect('/sign-in');
+    redirect('/login');
   }
 
   const { slug } = await params;

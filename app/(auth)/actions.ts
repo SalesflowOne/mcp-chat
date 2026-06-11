@@ -21,9 +21,9 @@ const authFormSchema = z.object({
   password: z.string().min(6),
 });
 
-/** Legacy stubs — Clerk handles sign-in at /sign-in */
+/** Legacy stubs — use /login for authentication */
 export const googleLogin = async () => {
-  throw new Error('Use /sign-in for authentication');
+  throw new Error('Use /login for authentication');
 };
 
 export const login = async (): Promise<LoginActionState> => {

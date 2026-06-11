@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       })
     }
 
-    const clerkUserId = session.clerkUserId
+    const authUserId = session.authUserId
     const tenant = await resolvePersistTenant()
 
     const userMessage = getMostRecentUserMessage(messages)
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
 
     if (persistChat && tenant) {
       try {
-        const chat = await getChatById({ id, clerkUserId })
+        const chat = await getChatById({ id, authUserId })
 
         if (!chat) {
           const title = await generateTitleFromUserMessage({
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
     }
 
     const allowDestructive = userApprovedDestructiveActions(messages)
-    const mcpSession = new MCPSessionManager(MCP_BASE_URL, clerkUserId, id, {
+    const mcpSession = new MCPSessionManager(MCP_BASE_URL, authUserId, id, {
       allowDestructive,
     })
 
@@ -263,7 +263,7 @@ export async function DELETE(request: Request) {
   }
   
   const appUserId = session.appUserId
-  const clerkUserId = session.clerkUserId
+  const authUserId = session.authUserId
 
   // In dev mode without auth, just return success without deleting
   if (!shouldPersistData()) {
@@ -271,13 +271,13 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const chat = await getChatById({ id, clerkUserId })
+    const chat = await getChatById({ id, authUserId })
 
     if (chat.userId !== appUserId) {
       return new Response("Unauthorized", { status: 401 })
     }
 
-    await deleteChatById({ id, clerkUserId })
+    await deleteChatById({ id, authUserId })
 
     return new Response("Chat deleted", { status: 200 })
   } catch (error) {

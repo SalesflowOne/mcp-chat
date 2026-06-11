@@ -3,7 +3,6 @@
 import Link from 'next/link';
 
 import { AgentOpsLogo } from '@/components/agentops-logo';
-import { SatelliteAuthButton } from '@/components/auth/satellite-auth-button';
 import { APP_NAME } from '@/lib/constants';
 import {
   AlertDialog,
@@ -13,7 +12,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { isClerkSatelliteApp } from '@/lib/clerk-config';
 
 interface SignInModalProps {
   isOpen: boolean;
@@ -67,39 +65,16 @@ export function SignInModal({ isOpen, onClose }: SignInModalProps) {
           </AlertDialogHeader>
 
           <div className="flex flex-col gap-3 w-full max-w-xs">
-            {isClerkSatelliteApp() ? (
-              <>
-                <SatelliteAuthButton
-                  mode="sign-in"
-                  variant="blue"
-                  className="w-full"
-                  onNavigate={onClose}
-                >
-                  Sign in
-                </SatelliteAuthButton>
-                <SatelliteAuthButton
-                  mode="sign-up"
-                  variant="outline"
-                  className="w-full"
-                  onNavigate={onClose}
-                >
-                  Create account
-                </SatelliteAuthButton>
-              </>
-            ) : (
-              <>
-                <Button asChild variant="blue" className="w-full">
-                  <Link href="/sign-in" onClick={onClose}>
-                    Sign in
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" className="w-full">
-                  <Link href="/sign-up" onClick={onClose}>
-                    Create account
-                  </Link>
-                </Button>
-              </>
-            )}
+            <Button asChild variant="blue" className="w-full">
+              <Link href="/login" onClick={onClose}>
+                Sign in
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/register" onClick={onClose}>
+                Create account
+              </Link>
+            </Button>
           </div>
         </div>
       </AlertDialogContent>

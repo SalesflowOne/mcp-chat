@@ -1,44 +1,44 @@
-## Clerk setup (agentops.one satellite)
+## Auth (Supabase)
 
-### Why sign-in uses `accounts.oneaccess.one`
+AgentOps uses **Supabase Auth** as the single identity provider. The app ships branded pages at:
 
-AgentOps is on the **shared One OS Clerk instance**. The hosted sign-in UI lives at `accounts.oneaccess.one` (same as other satellites). That is **not** the dead apex `oneaccess.one`.
+| Route | Purpose |
+|-------|---------|
+| `/login` | Email/password sign in |
+| `/register` | New account signup |
+| `/forgot-password` | Request password reset email |
+| `/reset-password` | Set new password from email link |
+| `/settings` | Profile + password management |
 
-After sign-in, users are sent to **`https://agentops.one/`** via `redirect_url` and `sign_in_force_redirect_url`.
+Legacy `/sign-in` and `/sign-up` redirect to `/login` and `/register`.
 
-### Cloudflare DNS (agentops.one zone)
+### Required environment variables
 
-Run:
+| Variable | Purpose |
+|----------|---------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key (browser + middleware) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side admin operations only |
+| `AGENTOPS_PERSIST_SECRET` | RPC fallback when service role unavailable on Vercel |
+| `NEXT_PUBLIC_APP_URL` | App origin for auth redirects (`https://agentops.one`) |
 
-```bash
-node scripts/setup-cloudflare-agentops-dns.mjs
-```
+### Supabase Dashboard
 
-| Subdomain | CNAME target |
-|-----------|----------------|
-| `accounts` | `accounts.clerk.services` |
-| `clerk` | `frontend-api.clerk.services` |
+1. **Authentication → URL configuration**
+   - Site URL: `https://agentops.one`
+   - Redirect URLs: `https://agentops.one/auth/callback`, `https://agentops.one/reset-password`
+2. **Authentication → Providers** — enable Email
+3. Run migrations in `supabase/migrations/` including `20260612100000_supabase_auth_profiles.sql`
 
-Records must be **DNS only** (grey cloud), not proxied.
+### Data model (OneAccess-ready)
 
-`accounts.agentops.one` DNS is required for the future switch, but **Clerk must also provision** that hostname on their edge (Dashboard → Domains → agentops.one). Until then, the app uses `accounts.oneaccess.one`.
+- `profiles` — global user fields (`auth.users.id` FK)
+- `user_roles` — per-app roles (`app_id = 'agentops'`)
+- `app_users` — app-specific flags (`is_master_admin`, etc.)
+- `organizations` / `organization_members` — workspaces
 
-### Vercel env
+Service-role access on the server enforces tenant boundaries after `auth.getUser()`.
 
-| Variable | Value |
-|----------|--------|
-| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `https://accounts.oneaccess.one/sign-in` |
-| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `https://accounts.oneaccess.one/sign-up` |
-| `NEXT_PUBLIC_APP_URL` | `https://agentops.one` |
-| `NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL` | `https://agentops.one/` |
-| `NEXT_PUBLIC_CLERK_PROXY_URL` | `https://agentops.one/__clerk` |
+## Supabase persistence
 
-### Clerk Dashboard (required)
-
-**Configure → Paths** — set Home, After sign-in, After sign-up, Logo link to **`https://agentops.one`** (not `https://oneaccess.one`).
-
-**Domains → agentops.one** — verify `accounts` CNAME so `accounts.agentops.one` can replace `accounts.oneaccess.one` later.
-
-### Vercel domains
-
-Run `node scripts/fix-vercel-agentops-domains.mjs` — apex serves app; www → apex.
+See `scripts/fix-vercel-supabase-env.mjs` and `scripts/sync-vercel-env.mjs` for Vercel env setup.

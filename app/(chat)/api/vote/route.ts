@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
   const chat = await getChatById({
     id: chatId,
-    clerkUserId: session.clerkUserId,
+    authUserId: session.authUserId,
   });
 
   if (!chat) {
@@ -63,7 +63,7 @@ export async function PATCH(request: Request) {
 
   const chat = await getChatById({
     id: chatId,
-    clerkUserId: session.clerkUserId,
+    authUserId: session.authUserId,
   });
 
   if (!chat) {

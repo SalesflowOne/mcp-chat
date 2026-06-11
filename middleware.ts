@@ -1,75 +1,105 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
-import type { NextFetchEvent, NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { type NextRequest, NextResponse } from 'next/server';
 
-import { getClerkMiddlewareOptions } from '@/lib/clerk-config';
+import {
+  getSupabaseAnonKey,
+  getSupabaseUrl,
+  isSupabaseAuthConfigured,
+} from '@/lib/supabase/config';
 
 const isAuthDisabled = process.env.DISABLE_AUTH === 'true';
 
-function isValidClerkPublishableKey(key: string | undefined): boolean {
-  return Boolean(key?.trim().startsWith('pk_'));
-}
-
-function isValidClerkSecretKey(key: string | undefined): boolean {
-  return Boolean(key?.trim().startsWith('sk_'));
-}
-
-const isPublicRoute = createRouteMatcher([
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/login(.*)',
-  '/register(.*)',
+const PUBLIC_PATHS = [
+  '/login',
+  '/register',
+  '/signup',
+  '/sign-in',
+  '/sign-up',
+  '/forgot-password',
+  '/reset-password',
+  '/auth/callback',
   '/healthcheck',
-  '/api/auth(.*)',
-  '/api/public/spaces(.*)',
-  '/share/spaces(.*)',
-  '/opengraph-image(.*)',
-  '/twitter-image(.*)',
-]);
+  '/api/public',
+  '/share/spaces',
+  '/opengraph-image',
+  '/twitter-image',
+];
 
-const isAdminRoute = createRouteMatcher(['/admin(.*)']);
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+}
 
-const clerkHandler = clerkMiddleware(
-  async (auth, request) => {
-    if (isPublicRoute(request)) {
-      return;
-    }
-
-    // /api/chat returns JSON 401 — avoid HTML redirects that break the AI SDK client.
-    if (isAdminRoute(request)) {
-      await auth.protect();
-    }
-  },
-  (request) => getClerkMiddlewareOptions(request.nextUrl.host) ?? {},
-);
-
-export default function middleware(request: NextRequest, event: NextFetchEvent) {
+export async function middleware(request: NextRequest) {
   if (isAuthDisabled) {
     return NextResponse.next();
   }
 
-  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  const secretKey = process.env.CLERK_SECRET_KEY;
+  const { pathname } = request.nextUrl;
 
-  if (!isValidClerkPublishableKey(publishableKey) || !isValidClerkSecretKey(secretKey)) {
-    console.warn(
-      'Clerk keys missing or invalid (expected pk_* and sk_*); bypassing middleware. Fix Vercel env or set DISABLE_AUTH=true',
-    );
-    return NextResponse.next();
+  let response = NextResponse.next({ request });
+
+  if (!isSupabaseAuthConfigured()) {
+    return response;
   }
 
-  try {
-    return clerkHandler(request, event);
-  } catch (error) {
-    console.error('Clerk middleware failed', error);
-    return NextResponse.next();
+  const supabase = createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        for (const { name, value } of cookiesToSet) {
+          request.cookies.set(name, value);
+        }
+        response = NextResponse.next({ request });
+        for (const { name, value, options } of cookiesToSet) {
+          response.cookies.set(name, value, options);
+        }
+      },
+    },
+  });
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (pathname.startsWith('/admin') && !user) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('returnTo', pathname);
+    return NextResponse.redirect(loginUrl);
   }
+
+  if (
+    user &&
+    (pathname === '/login' ||
+      pathname === '/register' ||
+      pathname === '/signup' ||
+      pathname === '/sign-in' ||
+      pathname === '/sign-up')
+  ) {
+    const returnTo = request.nextUrl.searchParams.get('returnTo') ?? '/';
+    return NextResponse.redirect(new URL(returnTo, request.url));
+  }
+
+  if (!isPublicPath(pathname) && pathname.startsWith('/api/') && !user) {
+    const isChatApi =
+      pathname.startsWith('/api/chat') ||
+      pathname.startsWith('/api/history') ||
+      pathname.startsWith('/api/document') ||
+      pathname.startsWith('/api/vote');
+    if (isChatApi) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+  }
+
+  return response;
 }
 
 export const config = {
   matcher: [
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     '/(api|trpc)(.*)',
-    '/__clerk/(.*)',
   ],
 };

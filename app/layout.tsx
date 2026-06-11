@@ -5,7 +5,7 @@ import { Toaster } from 'sonner';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import { ThemeProvider } from '@/components/theme-provider';
-import { AppClerkProvider } from '@/components/clerk-provider';
+import { AuthProvider } from '@/contexts/AuthContext';
 import { BASE_METADATA } from '@/lib/constants';
 import DatadogInit from '@/components/datadog-init';
 
@@ -14,7 +14,7 @@ import './globals.css';
 export const metadata: Metadata = BASE_METADATA;
 
 export const viewport = {
-  maximumScale: 1, // Disable auto-zoom on mobile Safari
+  maximumScale: 1,
 };
 
 const COOKIEBOT_ID = process.env.NEXT_PUBLIC_COOKIEBOT_ID;
@@ -59,10 +59,6 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      // `next-themes` injects an extra classname to the body element to avoid
-      // visual flicker before hydration. Hence the `suppressHydrationWarning`
-      // prop is necessary to avoid the React hydration mismatch warning.
-      // https://github.com/pacocoursey/next-themes?tab=readme-ov-file#with-app
       suppressHydrationWarning
       className={`${geist.variable} ${geistMono.variable}`}
     >
@@ -86,7 +82,7 @@ export default async function RootLayout({
       <body className="antialiased">
         <DatadogInit />
         <Analytics />
-        <AppClerkProvider>
+        <AuthProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -98,8 +94,8 @@ export default async function RootLayout({
               {children}
             </Suspense>
           </ThemeProvider>
-        </AppClerkProvider>
+        </AuthProvider>
       </body>
     </html>
-  )
+  );
 }

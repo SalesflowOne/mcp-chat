@@ -38,10 +38,13 @@ async function clerkFetch(path, init = {}) {
 }
 
 async function main() {
-  console.log('Patching allowed_redirect_origins…');
+  console.log('Patching instance settings (redirect origins + URL session sync)…');
   const instance = await clerkFetch('/instance', {
     method: 'PATCH',
-    body: JSON.stringify({ allowed_redirect_origins: ALLOWED_ORIGINS }),
+    body: JSON.stringify({
+      allowed_redirect_origins: ALLOWED_ORIGINS,
+      url_based_session_syncing: true,
+    }),
   });
   console.log(instance.ok ? '  OK' : `  FAILED ${instance.status}`, instance.body?.errors ?? '');
 

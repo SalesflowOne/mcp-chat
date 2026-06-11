@@ -40,7 +40,7 @@ const clerkHandler = clerkMiddleware(
       await auth.protect();
     }
   },
-  getClerkMiddlewareOptions(),
+  (request) => getClerkMiddlewareOptions(request.nextUrl.host) ?? {},
 );
 
 export default function middleware(request: NextRequest, event: NextFetchEvent) {

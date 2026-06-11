@@ -181,9 +181,15 @@ export function Chat({
         <p className="mt-3 text-muted-foreground">
           Sign in to connect your tools, automate operations, and build Spaces.
         </p>
-        <Link href="/sign-in" className="mt-4 inline-block text-sm font-medium text-indigo-600 underline">
+        <button
+          type="button"
+          className="mt-4 inline-block text-sm font-medium text-indigo-600 underline"
+          onClick={() => {
+            window.location.assign('/sign-in');
+          }}
+        >
           Get started
-        </Link>
+        </button>
       </div>
       <div className="w-full max-w-3xl">{inputBlock}</div>
     </div>

@@ -37,7 +37,7 @@ export function AppClerkProvider({ children }: { children: React.ReactNode }) {
       signUpFallbackRedirectUrl={forceRedirectUrl ?? '/'}
       signInForceRedirectUrl={forceRedirectUrl}
       signUpForceRedirectUrl={forceRedirectUrl}
-      satelliteAutoSync={false}
+      satelliteAutoSync={isSatellite}
     >
       {children}
     </ClerkProvider>

@@ -32,7 +32,19 @@ export const CLERK_ACCOUNT_PORTAL_AGENTOPS_SIGN_UP_URL =
 export const CLERK_SATELLITE_SIGN_IN_PATH = '/sign-in';
 export const CLERK_SATELLITE_SIGN_UP_PATH = '/sign-up';
 
-export function isClerkSatelliteApp(): boolean {
+export function isAgentOpsHost(host?: string | null): boolean {
+  if (!host) {
+    return false;
+  }
+  const normalized = host.toLowerCase().split(':')[0];
+  return normalized === 'agentops.one' || normalized === 'www.agentops.one';
+}
+
+export function isClerkSatelliteApp(host?: string | null): boolean {
+  if (isAgentOpsHost(host)) {
+    return true;
+  }
+
   const flag = process.env.NEXT_PUBLIC_CLERK_IS_SATELLITE?.trim().toLowerCase();
   if (flag === 'true') {
     return true;
@@ -149,8 +161,8 @@ export function buildAccountPortalSignUpUrl(returnPath = '/'): string {
   return signUp.toString();
 }
 
-export function getClerkMiddlewareOptions() {
-  if (!isClerkSatelliteApp()) {
+export function getClerkMiddlewareOptions(host?: string | null) {
+  if (!isClerkSatelliteApp(host)) {
     return undefined;
   }
 
@@ -159,7 +171,8 @@ export function getClerkMiddlewareOptions() {
     isSatellite: true,
     signInUrl: getClerkPrimarySignInUrl(),
     signUpUrl: getClerkPrimarySignUpUrl(),
-    satelliteAutoSync: false,
+    // Sync session from accounts.oneaccess.one on first visit and after sign-in.
+    satelliteAutoSync: true,
     frontendApiProxy: {
       enabled: true,
       path: CLERK_FAPI_PROXY_PATH,

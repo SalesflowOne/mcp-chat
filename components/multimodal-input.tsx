@@ -126,12 +126,7 @@ function PureMultimodalInput({
       return;
     }
 
-    if (authStatus === 'loading') {
-      toast.error('Checking authentication, please try again in a moment.');
-      return;
-    }
-
-    if (authStatus === 'unauthenticated') {
+    if (authStatus === 'loading' || authStatus === 'unauthenticated') {
       // Save current input to localStorage so it persists after auth
       setLocalStorageInput(input);
       

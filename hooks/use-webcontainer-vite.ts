@@ -76,7 +76,7 @@ export function useWebContainerVite({
     if (!isWebContainerSupported()) {
       setPhase('error');
       setError(
-        'WebContainer requires cross-origin isolation (COOP/COEP). Reload this page or open the Space workspace directly.',
+        'WebContainer requires cross-origin isolation. Open this Space at /spaces/{id} for Vite preview.',
       );
       return;
     }

@@ -10,10 +10,11 @@ if (envFilePath) {
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  // WebContainer requires cross-origin isolation — scoped to Spaces only so Clerk auth works on / and /chat.
   async headers() {
     return [
       {
-        source: '/((?!api|_next/static|_next/image|favicon.ico).*)',
+        source: '/spaces/:path*',
         headers: [
           {
             key: 'Cross-Origin-Embedder-Policy',
